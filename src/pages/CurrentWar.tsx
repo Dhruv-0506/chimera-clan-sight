@@ -1,56 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { Sword, Users, Trophy, Clock, ShieldAlert } from "lucide-react";
 
-// --- VERSION & DEBUG ---
-// Manually update this every time you commit a change to the frontend
-const FRONTEND_VERSION = "2024-07-31-v1.1"; 
+// --- HELPER FUNCTIONS to process API data ---
 
-// --- Helper Functions (no changes needed) ---
-const formatTimeRemaining = (endTimeString) => { /* ... */ };
-const processAttacks = (war) => { /* ... */ };
+const formatTimeRemaining = (endTimeString) => {
+    if (!endTimeString) return "N/A";
+    const endTime = new Date(endTimeString).getTime();
+    const now = new Date().getTime();
+    const distance = endTime - now;
+
+    if (distance < 0) return "War Ended";
+
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h ${minutes}m`;
+};
+
+const processAttacks = (war) => {
+    if (!war?.clan?.members || !war?.opponent?.members) return [];
+
+    const memberNameMap = new Map(war.clan.members.map(m => [m.tag, m.name]));
+    const opponentPositionMap = new Map(war.opponent.members.map(m => [m.tag, m.mapPosition]));
+
+    const allAttacks = war.clan.members.flatMap(member => 
+        (member.attacks || []).map(attack => ({
+            player: memberNameMap.get(attack.attackerTag) || 'Unknown Player',
+            target: `#${opponentPositionMap.get(attack.defenderTag) || '?'}`,
+            stars: attack.stars,
+            destruction: attack.destructionPercentage,
+            order: attack.order
+        }))
+    );
+    
+    return allAttacks.sort((a, b) => b.order - a.order);
+};
 
 // --- COMPONENT ---
+
 export default function CurrentWar() {
   const [warData, setWarData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Announce the version we are running in the browser console
-    console.log(`--- Chimera Frontend Running ---`);
-    console.log(`--- VERSION: ${FRONTEND_VERSION} ---`);
-    console.log(`--------------------------------`);
-
     const fetchWarData = async () => {
         const API_URL = process.env.NODE_ENV === 'production'
-          ? 'https://chimera-clan-sight.onrender.com'
-          : 'http://localhost:3001';
-        
-        // Log the URL we are about to fetch. This is the most important debug line.
-        console.log(`[FETCH] Attempting to fetch from: ${API_URL}/api/current-war`);
+          ? 'https://chimera-clan-sight.onrender.com' // Your live backend URL
+          : 'http://localhost:3001';                 // Your local development URL
 
         try {
             const response = await fetch(`${API_URL}/api/current-war`);
-            
-            // Check if the response itself is okay
-            if (!response.ok) {
-                throw new Error(`Network response was not ok, status: ${response.status}`);
-            }
-
             const result = await response.json();
-            console.log("[FETCH] Successfully received data:", result);
 
             if (result.error) {
                 throw new Error(result.error);
             }
+            
             if (result.data.state === 'notInWar') {
                 throw new Error("The clan is not currently in a war.");
             }
 
             setWarData(result.data);
         } catch (err: any) {
-            // Log the full error
-            console.error("[FETCH] An error occurred:", err);
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -60,21 +72,130 @@ export default function CurrentWar() {
     fetchWarData();
   }, []);
 
-  // ... (Your loading and error JSX remains the same) ...
-  if (isLoading) { /* ... */ }
-  if (error || !warData) { /* ... */ }
+  // 1. Loading State
+  if (isLoading) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="text-center">
+                <h1 className="text-2xl font-bold text-foreground">Loading War Data...</h1>
+                <p className="text-muted-foreground">Fetching live battle analytics.</p>
+            </div>
+        </div>
+    );
+  }
 
+  // 2. Error or No War State
+  if (error || !warData) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="glass-panel p-8 text-center">
+                <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
+                <h1 className="text-2xl font-bold text-foreground">War Data Unavailable</h1>
+                <p className="text-muted-foreground">{error || "Could not retrieve current war information."}</p>
+            </div>
+        </div>
+    );
+  }
+  
+  // 3. Success State: Prepare data for the existing UI
   const warStatus = warData.state.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
   const attacks = processAttacks(warData);
 
+  // Render the original UI with fetched data
   return (
     <div className="min-h-screen pt-24 px-6">
-      {/* VISIBLE VERSION NUMBER for easy checking */}
-      <div className="fixed bottom-2 right-2 text-xs text-muted-foreground/50">
-        v{FRONTEND_VERSION}
-      </div>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Current War</h1>
+          <p className="text-muted-foreground">Live battle analytics and performance tracking</p>
+        </div>
 
-      {/* ... (The rest of your JSX for the page remains the same) ... */}
+        {/* War Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Sword className="text-primary-glow" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">{warStatus}</div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Clock className="text-blue-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Time Left</span>
+            </div>
+            <div className="text-2xl font-bold red-glow">{formatTimeRemaining(warData.endTime)}</div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Trophy className="text-yellow-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Stars</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">
+              <span className="text-primary-glow">{warData.clan.stars}</span>
+              <span className="text-muted-foreground"> - {warData.opponent.stars}</span>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Users className="text-purple-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Destruction</span>
+            </div>
+            <div className="text-lg font-bold text-foreground">
+              <span className="text-primary-glow">{warData.clan.destructionPercentage.toFixed(2)}%</span>
+              <span className="text-muted-foreground"> - {warData.opponent.destructionPercentage.toFixed(2)}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Attacks Table */}
+        <div className="glass-panel p-6">
+          <h2 className="text-2xl font-semibold text-foreground mb-6">Recent Attacks</h2>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Player</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Target</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Stars</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Destruction</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attacks.map((attack, index) => (
+                  <tr key={index} className="border-b border-glass-border hover:bg-glass-hover transition-colors">
+                    <td className="py-3 px-4 text-foreground font-medium">{attack.player}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{attack.target}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-1">
+                        {[...Array(3)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < attack.stars
+                                ? "text-yellow-400 drop-shadow-glow"
+                                : "text-muted-foreground/30"
+                            }`}
+                          >
+                            ⭐
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-primary-glow font-semibold">{attack.destruction}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
