@@ -24,8 +24,12 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				glass: 'hsl(var(--glass))',
+				'glass-border': 'hsl(var(--glass-border))',
+				'glass-hover': 'hsl(var(--glass-hover))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
+					glow: 'hsl(var(--primary-glow))',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {
@@ -62,6 +66,15 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'atmospheric': 'var(--gradient-atmospheric)',
+				'ember': 'var(--gradient-ember)', 
+				'glass': 'var(--gradient-glass)',
+				'red-glow': 'var(--gradient-red-glow)'
+			},
+			backdropBlur: {
+				'glass': '12px'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
