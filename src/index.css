@@ -1,190 +1,105 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Project Chimera Design System - Futuristic Clash Dashboard */
-
-@layer base {
-  :root {
-    /* Atmospheric Background Colors */
-    --background: 0 0% 7%;
-    --background-secondary: 0 15% 9%;
-    --foreground: 0 0% 98%;
-
-    /* Glass Morphism Elements */
-    --glass: 0 0% 15% / 0.15;
-    --glass-border: 0 0% 40% / 0.3;
-    --glass-hover: 0 0% 20% / 0.25;
-
-    /* Card Elements */
-    --card: 0 0% 12% / 0.8;
-    --card-foreground: 0 0% 96%;
-
-    /* Popover/Modal Elements */
-    --popover: 0 0% 8% / 0.95;
-    --popover-foreground: 0 0% 98%;
-
-    /* Primary Red Accent */
-    --primary: 0 75% 45%;
-    --primary-glow: 0 85% 55%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary Glass Elements */
-    --secondary: 0 0% 20% / 0.6;
-    --secondary-foreground: 0 0% 90%;
-
-    /* Muted Elements */
-    --muted: 0 0% 15% / 0.8;
-    --muted-foreground: 0 0% 70%;
-
-    /* Accent Elements */
-    --accent: 0 60% 35%;
-    --accent-foreground: 0 0% 98%;
-
-    /* Destructive */
-    --destructive: 0 84% 55%;
-    --destructive-foreground: 0 0% 98%;
-
-    /* Borders and Inputs */
-    --border: 0 0% 25% / 0.5;
-    --input: 0 0% 20% / 0.8;
-    --ring: 0 75% 45%;
-
-    /* Gradients */
-    --gradient-atmospheric: linear-gradient(135deg, hsl(0 0% 5%) 0%, hsl(0 20% 8%) 30%, hsl(0 15% 6%) 70%, hsl(0 5% 4%) 100%);
-    --gradient-ember: radial-gradient(ellipse at center, hsl(0 40% 12%) 0%, hsl(0 25% 8%) 50%, hsl(0 0% 4%) 100%);
-    --gradient-glass: linear-gradient(135deg, hsl(0 0% 15% / 0.1) 0%, hsl(0 0% 25% / 0.15) 100%);
-    --gradient-red-glow: linear-gradient(90deg, hsl(0 75% 45%) 0%, hsl(0 85% 55%) 100%);
-
-    /* Shadows */
-    --shadow-glass: 0 8px 32px hsl(0 0% 0% / 0.4);
-    --shadow-red-glow: 0 0 30px hsl(0 75% 45% / 0.3);
-    --shadow-ember: 0 4px 20px hsl(0 40% 20% / 0.6);
-
-    /* Border Radius */
-    --radius: 1rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+/* --- CORE DESIGN & MODERN FONTS --- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@font-face {
+    font-family: 'Supercell-Magic';
+    src: url('https://clashofclans.com/fonts/supercell-magic_webfont.woff2') format('woff2');
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+:root {
+    --soviet-red: #C62828;
+    --text-primary: #ECEFF1;
+    --text-secondary: #B0BEC5;
+    --glass-bg: rgba(22, 24, 28, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --hover-bg: rgba(255, 255, 255, 0.05);
+    --radius: 0.75rem;
+    --primary-glow: #ff5252;
+}
 
-  body {
-    @apply bg-background text-foreground;
-    background: var(--gradient-atmospheric);
+body {
+    font-family: 'Roboto', sans-serif;
+    color: var(--text-primary);
+    margin: 0;
+    background-color: #121212;
+    background-image: radial-gradient(ellipse at top, #4a1a1a 0%, #121212 60%);
     background-attachment: fixed;
-    min-height: 100vh;
-  }
+    background-size: 100% 150%;
 }
 
-@layer components {
-  .glass-panel {
-    @apply backdrop-blur-xl bg-glass border border-glass-border rounded-[var(--radius)] shadow-[var(--shadow-glass)];
-  }
-  
-  .glass-panel-hover {
-    @apply glass-panel hover:bg-glass-hover transition-all duration-300;
-  }
-  
-  .red-glow {
-    @apply text-primary-glow drop-shadow-[0_0_8px_hsl(var(--primary-glow)_/_0.6)];
-  }
-  
-  .red-glow-bg {
-    background: var(--gradient-red-glow);
-    @apply drop-shadow-[var(--shadow-red-glow)];
-  }
-  
-  .atmospheric-overlay {
-    background: var(--gradient-ember);
-    @apply absolute inset-0 pointer-events-none opacity-30;
-  }
+/* --- MODERN NAVIGATION BAR --- */
+.navbar {
+    position: sticky; top: 0; z-index: 1000;
+    padding: 0.75rem 2rem;
+    background: rgba(18, 18, 18, 0.5);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+}
+.nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1600px; margin: 0 auto; }
+.nav-logo { font-family: 'Supercell-Magic', sans-serif; color: var(--soviet-red); font-size: 1.25rem; text-decoration: none; display: flex; align-items: center; gap: 0.75rem; }
+.nav-menu { list-style: none; display: flex; margin: 0; padding: 0; gap: 0.5rem; }
+.nav-link { color: var(--text-secondary); font-weight: 500; text-decoration: none; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease; border-radius: var(--radius); }
+.nav-link.active, .nav-link:hover { color: #fff; background-color: var(--hover-bg); }
+
+/* --- MAIN CONTENT & LAYOUT --- */
+.main-content { max-width: 1600px; margin: 2rem auto; padding: 0 2rem; }
+.content-header { margin-bottom: 2rem; }
+h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); }
+
+.glass-panel {
+    background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border); border-radius: var(--radius);
+    padding: 1.5rem; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 }
 
-@layer utilities {
-  .text-glass {
-    @apply text-foreground/90;
-  }
-  
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-  
-  .animate-glow-pulse {
-    animation: glow-pulse 2s ease-in-out infinite alternate;
-  }
-}
+/* --- STATS & CARDS --- */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.stat-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 1.5rem; }
+.stat-header { display: flex; align-items: center; justify-content: space-between; color: var(--text-secondary); margin-bottom: 1rem; text-transform: uppercase; font-size: 0.8rem; font-weight: 500; }
+.stat-value { font-size: 2rem; font-weight: 700; color: #fff; }
+.stat-value.red-glow { color: var(--primary-glow); text-shadow: 0 0 8px var(--primary-glow); }
 
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
+/* --- TABLE STYLES --- */
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 1rem; border-bottom: 1px solid var(--glass-border); text-align: left; vertical-align: middle; }
+thead th { color: var(--primary-glow); font-weight: 500; border-bottom: 2px solid var(--glass-border); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background-color: var(--hover-bg); }
 
-@keyframes glow-pulse {
-  0% {
-    filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.3));
-  }
-  100% {
-    filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.8));
-  }
+/* --- PLAYER ROSTER SPECIFIC --- */
+.player-card-grid { display: grid; gap: 1rem; }
+.player-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius);
+    padding: 1rem 1.5rem; transition: all 0.2s ease; cursor: pointer;
 }
+.player-card:hover { background-color: var(--hover-bg); border-color: var(--soviet-red); }
+.player-info { display: flex; align-items: center; gap: 1rem; }
+.player-info h3 { margin: 0; font-size: 1.1rem; }
+.player-info span { color: var(--text-secondary); font-size: 0.9rem; }
+.player-score { text-align: right; }
+.player-score .stat-value { font-size: 1.5rem; }
+.player-score p { margin: 0; font-size: 0.8rem; color: var(--text-secondary); }
+
+/* --- MODAL (POP-UP) STYLES --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none; justify-content: center; align-items: center; z-index: 2000;
+}
+.modal-content {
+    background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border); border-radius: calc(var(--radius) + 4px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    width: 90%; max-width: 900px; padding: 1rem; position: relative;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--glass-border); }
+.modal-body { display: flex; gap: 2rem; padding: 1.5rem; }
+.modal-close { font-size: 2rem; color: var(--text-secondary); cursor: pointer; transition: color 0.2s ease; background: none; border: none; }
+.modal-close:hover { color: #fff; }
+.modal-profile { flex: 1; } .modal-graph { flex: 2; }
+.modal-profile h3 { margin-top: 0; color: var(--primary-glow); }
+.modal-profile ul { list-style: none; padding: 0; }
+.modal-profile li { display: flex; justify-content: space-between; padding: 0.75rem 0; align-items: center; }
+.modal-profile li div { display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+.modal-profile li strong { font-weight: 500; color: var(--text-primary); }
