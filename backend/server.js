@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 3001;
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
-import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:3000', // For your local development
