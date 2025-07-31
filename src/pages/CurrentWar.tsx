@@ -1,24 +1,107 @@
-import { Sword, Users, Trophy, Clock } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Sword, Users, Trophy, Clock, ShieldAlert } from "lucide-react";
 
-// Mock war data
-const warData = {
-  status: "In Progress",
-  timeRemaining: "18h 24m",
-  clanStars: 42,
-  enemyStars: 38,
-  clanDestruction: 87.5,
-  enemyDestruction: 82.3,
-  attacks: [
-    { player: "DragonSlayer", target: "#1", stars: 3, destruction: 95 },
-    { player: "StormBreaker", target: "#3", stars: 2, destruction: 78 },
-    { player: "IronFist", target: "#5", stars: 3, destruction: 89 },
-    { player: "ShadowHunter", target: "#2", stars: 2, destruction: 71 },
-    { player: "FireStorm", target: "#8", stars: 3, destruction: 92 },
-    { player: "ThunderBolt", target: "#6", stars: 2, destruction: 84 },
-  ]
+// --- HELPER FUNCTIONS to process API data ---
+
+// Calculates and formats the time remaining in the war
+const formatTimeRemaining = (endTimeString) => {
+    if (!endTimeString) return "N/A";
+    const endTime = new Date(endTimeString).getTime();
+    const now = new Date().getTime();
+    const distance = endTime - now;
+
+    if (distance < 0) return "War Ended";
+
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h ${minutes}m`;
 };
 
+// Gathers all attacks from all clan members into a single, sorted list
+const processAttacks = (war) => {
+    if (!war?.clan?.members || !war?.opponent?.members) return [];
+
+    const memberNameMap = new Map(war.clan.members.map(m => [m.tag, m.name]));
+    const opponentPositionMap = new Map(war.opponent.members.map(m => [m.tag, m.mapPosition]));
+
+    const allAttacks = war.clan.members.flatMap(member => 
+        (member.attacks || []).map(attack => ({
+            player: memberNameMap.get(attack.attackerTag) || 'Unknown Player',
+            target: `#${opponentPositionMap.get(attack.defenderTag) || '?'}`,
+            stars: attack.stars,
+            destruction: attack.destructionPercentage,
+            order: attack.order
+        }))
+    );
+    
+    // Sort attacks by the order they were made, most recent first
+    return allAttacks.sort((a, b) => b.order - a.order);
+};
+
+// --- COMPONENT ---
+
 export default function CurrentWar() {
+  // State for war data, loading status, and errors
+  const [warData, setWarData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchWarData = async () => {
+        try {
+            const response = await fetch('/api/current-war');
+            const result = await response.json();
+
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            if (result.data.state === 'notInWar') {
+                throw new Error("The clan is not currently in a war.");
+            }
+
+            setWarData(result.data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchWarData();
+  }, []); // The empty array [] ensures this effect runs only once on mount
+
+  // 1. Loading State
+  if (isLoading) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="text-center">
+                <h1 className="text-2xl font-bold text-foreground">Loading War Data...</h1>
+                <p className="text-muted-foreground">Fetching live battle analytics.</p>
+            </div>
+        </div>
+    );
+  }
+
+  // 2. Error or No War State
+  if (error || !warData) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="glass-panel p-8 text-center">
+                <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
+                <h1 className="text-2xl font-bold text-foreground">War Data Unavailable</h1>
+                <p className="text-muted-foreground">{error || "Could not retrieve current war information."}</p>
+            </div>
+        </div>
+    );
+  }
+  
+  // 3. Success State: Prepare data for the existing UI
+  const warStatus = warData.state.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+  const attacks = processAttacks(warData);
+
+  // Render the original UI with fetched data
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
@@ -34,7 +117,7 @@ export default function CurrentWar() {
               <Sword className="text-primary-glow" size={24} />
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
             </div>
-            <div className="text-2xl font-bold text-foreground">{warData.status}</div>
+            <div className="text-2xl font-bold text-foreground">{warStatus}</div>
           </div>
 
           <div className="glass-panel p-6">
@@ -42,7 +125,7 @@ export default function CurrentWar() {
               <Clock className="text-blue-400" size={24} />
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Time Left</span>
             </div>
-            <div className="text-2xl font-bold red-glow">{warData.timeRemaining}</div>
+            <div className="text-2xl font-bold red-glow">{formatTimeRemaining(warData.endTime)}</div>
           </div>
 
           <div className="glass-panel p-6">
@@ -51,8 +134,8 @@ export default function CurrentWar() {
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Stars</span>
             </div>
             <div className="text-2xl font-bold text-foreground">
-              <span className="text-primary-glow">{warData.clanStars}</span>
-              <span className="text-muted-foreground"> - {warData.enemyStars}</span>
+              <span className="text-primary-glow">{warData.clan.stars}</span>
+              <span className="text-muted-foreground"> - {warData.opponent.stars}</span>
             </div>
           </div>
 
@@ -62,8 +145,8 @@ export default function CurrentWar() {
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Destruction</span>
             </div>
             <div className="text-lg font-bold text-foreground">
-              <span className="text-primary-glow">{warData.clanDestruction}%</span>
-              <span className="text-muted-foreground"> - {warData.enemyDestruction}%</span>
+              <span className="text-primary-glow">{warData.clan.destructionPercentage.toFixed(2)}%</span>
+              <span className="text-muted-foreground"> - {warData.opponent.destructionPercentage.toFixed(2)}%</span>
             </div>
           </div>
         </div>
@@ -83,7 +166,7 @@ export default function CurrentWar() {
                 </tr>
               </thead>
               <tbody>
-                {warData.attacks.map((attack, index) => (
+                {attacks.map((attack, index) => (
                   <tr key={index} className="border-b border-glass-border hover:bg-glass-hover transition-colors">
                     <td className="py-3 px-4 text-foreground font-medium">{attack.player}</td>
                     <td className="py-3 px-4 text-muted-foreground">{attack.target}</td>
