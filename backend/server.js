@@ -2,15 +2,19 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import 'dotenv/config';
+import 'math';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// --- CONFIGURATION ---
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
+// --- MIDDLEWARE ---
 app.use(cors());
 
+// --- API HELPER ---
 const cocApi = axios.create({
     baseURL: 'https://api.clashofclans.com/v1',
     headers: { 'Authorization': `Bearer ${API_TOKEN}` }
@@ -29,6 +33,7 @@ const makeApiRequest = async (endpoint) => {
     }
 };
 
+// --- ANALYTICS ENGINES ---
 const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     const star_power = {3: 207, 2: 89, 1: 32, 0: 0}[attack.stars] || 0;
     const destruction_factor = 1 + (attack.destructionPercentage / 250);
@@ -75,9 +80,25 @@ const calculateHistoricalPerformance = (clan_members, war_log) => {
     });
 };
 
+const calculateArchiveStats = (war_list) => {
+    if (!war_list || war_list.length === 0) return { totalWars: 0, winRate: 0, avgStars: 0, avgDestruction: 0 };
+    const wins = war_list.filter(w => w.result === 'win').length;
+    const totalStars = war_list.reduce((sum, w) => sum + w.clan.stars, 0);
+    const totalDestruction = war_list.reduce((sum, w) => sum + w.clan.destructionPercentage, 0);
+    return {
+        totalWars: war_list.length,
+        winRate: Math.round((wins / war_list.length) * 100),
+        avgStars: Math.round(totalStars / war_list.length),
+        avgDestruction: Math.round(totalDestruction / war_list.length)
+    };
+};
+
+// --- API ROUTES ---
+
 app.get('/api/player-roster', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
     try {
+        // Fetch both clan details and war log in parallel for efficiency
         const [clanRes, warLogRes] = await Promise.all([
             cocApi.get(`/clans/${encodedTag}`),
             cocApi.get(`/clans/${encodedTag}/warlog`)
@@ -101,4 +122,7 @@ app.get('/api/war-log', async (req, res) => {
     res.json(result);
 });
 
-app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
+// --- SERVER INITIALIZATION ---
+app.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+});
