@@ -3,14 +3,12 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
 import { ShieldAlert } from 'lucide-react';
 
-// Define a type for the player data that matches the API response
-// This provides type safety and autocompletion
 type Player = {
   tag: string;
   name: string;
   townHallLevel: number;
   averageWarScore: number;
-  role: 'leader' | 'coLeader' | 'admin' | 'member'; // API uses 'admin' for elder
+  role: 'leader' | 'coLeader' | 'admin' | 'member';
   trophies: number;
   warStars: number;
   donations: number;
@@ -18,7 +16,6 @@ type Player = {
 };
 
 export default function PlayerRoster() {
-  // States for data, loading, error, and the selected player for the modal
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,15 +23,16 @@ export default function PlayerRoster() {
 
   useEffect(() => {
     const fetchPlayerData = async () => {
+        // Define the API URL for production and local development
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001'; const response = await fetch(`${API_URL}/api/player-roster`);
+            const response = await fetch(`${API_URL}/api/player-roster`);
             const result = await response.json();
 
             if (result.error) {
                 throw new Error(result.error);
             }
             
-            // Sort players by averageWarScore in descending order by default
             const sortedPlayers = result.data.sort((a: Player, b: Player) => b.averageWarScore - a.averageWarScore);
             setPlayers(sortedPlayers);
 
@@ -46,7 +44,7 @@ export default function PlayerRoster() {
     };
 
     fetchPlayerData();
-  }, []); // Empty array ensures this runs only once
+  }, []);
 
   if (isLoading) {
     return (
@@ -82,7 +80,7 @@ export default function PlayerRoster() {
         <div className="grid gap-4">
           {players.map((player) => (
             <PlayerCard
-              key={player.tag} // Use the unique player tag as the key
+              key={player.tag}
               player={player}
               onClick={setSelectedPlayer}
             />
