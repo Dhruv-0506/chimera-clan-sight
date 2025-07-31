@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Medal, TrendingUp, Users, Trophy, ShieldAlert } from "lucide-react";
 
-const CLAN_TAG = "#2G8LRGU2Q"; // Your clan's tag to identify it in the API response
+const CLAN_TAG = "#2G8LRGU2Q";
 
 // --- HELPER FUNCTIONS to process API data ---
 
-// This function takes the raw API responses and transforms them into the clean format the UI expects.
 const processCwlData = (groupData, warLogData) => {
     const ourClan = groupData.clans.find(c => c.tag === CLAN_TAG);
     if (!ourClan) throw new Error("Our clan not found in CWL group.");
 
-    // 1. Calculate Standings
     const sortedClans = [...groupData.clans].sort((a, b) => {
         if (b.stars !== a.stars) return b.stars - a.stars;
         return b.destructionPercentage - a.destructionPercentage;
     });
     const ourPosition = sortedClans.findIndex(c => c.tag === CLAN_TAG) + 1;
 
-    // 2. Determine Current Round
     const currentRoundIndex = groupData.rounds.findIndex(round => round.warTags.some(tag => tag !== '#0'));
     const currentRound = currentRoundIndex !== -1 ? currentRoundIndex + 1 : groupData.rounds.length;
 
-    // 3. Process Match History
     const cwlWars = (warLogData.cwl?.wars || []).filter(war => groupData.season === war.season);
     const matches = groupData.rounds.slice(0, currentRound).map((round, index) => {
         const warTag = round.warTags.find(tag => tag !== '#0');
@@ -43,9 +39,8 @@ const processCwlData = (groupData, warLogData) => {
             stars: `${war.clan.stars}-${war.opponent.stars}`,
             destruction: `${war.clan.destructionPercentage.toFixed(1)}% - ${war.opponent.destructionPercentage.toFixed(1)}%`
         };
-    }).reverse(); // Show most recent day first
+    }).reverse();
 
-    // 4. Calculate Top Performers
     const playerStats = new Map();
     for (const war of cwlWars) {
         if (!war.clan.members) continue;
@@ -89,10 +84,12 @@ export default function CWL() {
 
   useEffect(() => {
     const fetchCwlPageData = async () => {
+        // Define the API URL for production and local development
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         try {
             const [groupResponse, warLogResponse] = await Promise.all([
-                fetch('/api/cwl'),
-                fetch('/api/war-log-stats')
+                fetch(`${API_URL}/api/cwl`),
+                fetch(`${API_URL}/api/war-log-stats`)
             ]);
             
             const groupResult = await groupResponse.json();
@@ -109,7 +106,7 @@ export default function CWL() {
             const processedData = processCwlData(groupResult.data, warLogResult.data);
             setCwlData(processedData);
 
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
