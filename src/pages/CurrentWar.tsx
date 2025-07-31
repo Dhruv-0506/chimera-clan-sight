@@ -3,7 +3,6 @@ import { Sword, Users, Trophy, Clock, ShieldAlert } from "lucide-react";
 
 // --- HELPER FUNCTIONS to process API data ---
 
-// Calculates and formats the time remaining in the war
 const formatTimeRemaining = (endTimeString) => {
     if (!endTimeString) return "N/A";
     const endTime = new Date(endTimeString).getTime();
@@ -18,7 +17,6 @@ const formatTimeRemaining = (endTimeString) => {
     return `${hours}h ${minutes}m`;
 };
 
-// Gathers all attacks from all clan members into a single, sorted list
 const processAttacks = (war) => {
     if (!war?.clan?.members || !war?.opponent?.members) return [];
 
@@ -35,22 +33,22 @@ const processAttacks = (war) => {
         }))
     );
     
-    // Sort attacks by the order they were made, most recent first
     return allAttacks.sort((a, b) => b.order - a.order);
 };
 
 // --- COMPONENT ---
 
 export default function CurrentWar() {
-  // State for war data, loading status, and errors
   const [warData, setWarData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchWarData = async () => {
+        // Define the API URL for production and local development
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         try {
-            const response = await fetch('/api/current-war');
+            const response = await fetch(`${API_URL}/api/current-war`);
             const result = await response.json();
 
             if (result.error) {
@@ -62,7 +60,7 @@ export default function CurrentWar() {
             }
 
             setWarData(result.data);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -70,9 +68,8 @@ export default function CurrentWar() {
     };
 
     fetchWarData();
-  }, []); // The empty array [] ensures this effect runs only once on mount
+  }, []);
 
-  // 1. Loading State
   if (isLoading) {
     return (
         <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
@@ -84,7 +81,6 @@ export default function CurrentWar() {
     );
   }
 
-  // 2. Error or No War State
   if (error || !warData) {
     return (
         <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
@@ -97,11 +93,9 @@ export default function CurrentWar() {
     );
   }
   
-  // 3. Success State: Prepare data for the existing UI
   const warStatus = warData.state.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
   const attacks = processAttacks(warData);
 
-  // Render the original UI with fetched data
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
