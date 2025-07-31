@@ -3,23 +3,21 @@ import { Calendar, Search, Filter, ShieldAlert } from "lucide-react";
 
 // --- HELPER FUNCTIONS to process API data ---
 
-// Formats the UTC timestamp from the API into a simple YYYY-MM-DD string
 const formatDate = (endTimeString) => {
   if (!endTimeString) return 'N/A';
   const date = new Date(endTimeString);
   return date.toISOString().split('T')[0];
 };
 
-// Formats the raw war data into the clean format the UI table expects
 const processWarList = (wars) => {
     return wars.map((war, index) => ({
-        id: war.warTag || index, // Use warTag as a unique key if available
+        id: war.warTag || index,
         date: formatDate(war.endTime),
         opponent: war.opponent?.name || 'Unknown Opponent',
         result: war.result ? war.result.charAt(0).toUpperCase() + war.result.slice(1) : 'Draw',
         stars: `${war.clan?.stars || 0}-${war.opponent?.stars || 0}`,
         destruction: `${war.clan?.destructionPercentage?.toFixed(1) || 0}% - ${war.opponent?.destructionPercentage?.toFixed(1) || 0}%`,
-        duration: "24h" // Standard war duration
+        duration: "24h"
     }));
 };
 
@@ -30,26 +28,25 @@ export default function Archives() {
   const [wars, setWars] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // State for the search filter
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchArchiveData = async () => {
+        // Define the API URL for production and local development
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         try {
-            const response = await fetch('/api/war-log-stats');
+            const response = await fetch(`${API_URL}/api/war-log-stats`);
             const result = await response.json();
 
             if (result.error) {
                 throw new Error(result.error);
             }
             
-            // We only care about regular wars for this page
             const regularWarData = result.data.regular;
             setStats(regularWarData.stats);
             setWars(processWarList(regularWarData.wars));
 
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -59,7 +56,6 @@ export default function Archives() {
     fetchArchiveData();
   }, []);
 
-  // Filter wars based on the search term before rendering
   const filteredWars = wars.filter(war =>
     war.opponent.toLowerCase().includes(searchTerm.toLowerCase())
   );
