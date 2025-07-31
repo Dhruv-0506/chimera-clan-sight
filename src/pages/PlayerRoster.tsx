@@ -27,7 +27,7 @@ export default function PlayerRoster() {
   useEffect(() => {
     const fetchPlayerData = async () => {
         try {
-            const response = await fetch('/api/player-roster');
+            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001'; const response = await fetch(`${API_URL}/api/player-roster`);
             const result = await response.json();
 
             if (result.error) {
