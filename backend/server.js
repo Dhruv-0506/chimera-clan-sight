@@ -6,14 +6,11 @@ import 'dotenv/config';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// --- CONFIGURATION ---
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
-// --- MIDDLEWARE ---
-app.use(cors()); // Allow your frontend to make requests to this backend
+app.use(cors());
 
-// --- API HELPER ---
 const cocApi = axios.create({
     baseURL: 'https://api.clashofclans.com/v1',
     headers: { 'Authorization': `Bearer ${API_TOKEN}` }
@@ -32,7 +29,6 @@ const makeApiRequest = async (endpoint) => {
     }
 };
 
-// --- ANALYTICS ENGINES ---
 const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     const star_power = {3: 207, 2: 89, 1: 32, 0: 0}[attack.stars] || 0;
     const destruction_factor = 1 + (attack.destructionPercentage / 250);
@@ -50,27 +46,27 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
 };
 
 const calculateHistoricalPerformance = (clan_members, war_log) => {
-    const player_map = new Map(clan_members.map(m => [m.tag, {
-        ...m, // Spread all properties from member list
-        war_scores: []
-    }]));
+    const player_map = new Map(clan_members.map(m => [m.tag, { ...m, war_scores: [] }]));
 
     for (const war of (war_log.items || [])) {
-        if (war.state !== 'warEnded' || !war.clan.members) continue;
-        const opponent_map = new Map((war.opponent.members || []).map(m => [m.tag, m]));
+        if (war.state !== 'warEnded' || !war.clan?.members) continue;
+        const opponent_map = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
         const team_size = war.teamSize || 1;
         for (const member_in_war of war.clan.members) {
             if (player_map.has(member_in_war.tag) && member_in_war.attacks) {
                 const player_data = player_map.get(member_in_war.tag);
                 const attacker_th = player_data.townHallLevel;
-                const attack_scores = member_in_war.attacks.map(att => calculateAttackScore(att, attacker_th, team_size, opponent_map));
-                player_map.get(member_in_war.tag).war_scores.push(attack_scores.reduce((a, b) => a + b, 0));
+                const wps = member_in_war.attacks
+                    .map(att => calculateAttackScore(att, attacker_th, team_size, opponent_map))
+                    .reduce((a, b) => a + b, 0);
+                player_map.get(member_in_war.tag).war_scores.push(wps);
             }
         }
     }
 
     return Array.from(player_map.values()).map(data => {
-        const avg_wps = data.war_scores.length > 0 ? data.war_scores.reduce((a, b) => a + b, 0) / data.war_scores.length : 0;
+        const total_score = data.war_scores.reduce((a, b) => a + b, 0);
+        const avg_wps = data.war_scores.length > 0 ? total_score / data.war_scores.length : 0;
         return {
             ...data,
             averageWarScore: avg_wps,
@@ -79,16 +75,6 @@ const calculateHistoricalPerformance = (clan_members, war_log) => {
     });
 };
 
-// --- API ROUTES ---
-
-// Route for the Current War page
-app.get('/api/current-war', async (req, res) => {
-    const encodedTag = CLAN_TAG.replace('#', '%23');
-    const result = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-    res.json(result);
-});
-
-// Route for the Player Roster & Analytics page
 app.get('/api/player-roster', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
     try {
@@ -103,15 +89,16 @@ app.get('/api/player-roster', async (req, res) => {
     }
 });
 
-// Route for the CWL & Archives pages (they both use the war log)
+app.get('/api/current-war', async (req, res) => {
+    const encodedTag = CLAN_TAG.replace('#', '%23');
+    const result = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+    res.json(result);
+});
+
 app.get('/api/war-log', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
     const result = await makeApiRequest(`/clans/${encodedTag}/warlog`);
     res.json(result);
 });
 
-
-// --- SERVER INITIALIZATION ---
-app.listen(PORT, () => {
-    console.log(`Backend server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
