@@ -34,7 +34,7 @@ export default function PlayerRoster() {
         {error && <p className="text-center text-red-400">Error: {error.message}</p>}
         
         {players && (
-          <div className="grid gap-4">
+          <div className="player-card-grid">
             {players.sort((a, b) => b.averageWarScore - a.averageWarScore).map((player: any) => (
               <PlayerCard
                 key={player.tag}
