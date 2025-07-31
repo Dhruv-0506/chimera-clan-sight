@@ -15,7 +15,7 @@ import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:3000', // For your local development
-  'https://YOUR_FRONTEND_URL.onrender.com' // FOR YOUR DEPLOYED SITE
+  'https://chimera-clan-sight-1.onrender.com' // FOR YOUR DEPLOYED SITE
 ];
 
 app.use(cors({
