@@ -1,10 +1,7 @@
-import { Crown } from 'lucide-react'; // Make sure lucide-react is in your package.json
+import { Crown } from 'lucide-react';
 
 export const PlayerCard = ({ player, onClick }) => (
-  <div 
-    className="player-card"
-    onClick={() => onClick(player)}
-  >
+  <div className="player-card" onClick={() => onClick(player)}>
     <div className="player-info">
       <Crown size={20} title={player.role} />
       <div>
