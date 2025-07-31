@@ -20,7 +20,8 @@ const CLAN_TAG = "#2G8LRGU2Q";
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://chimera-clan-sight-1.onrender.com'
+  'https://chimera-clan-sight-1.onrender.com',
+  'https://id-preview-0ed9eada--6924d48f-c5cb-4523-a032-00ae7b46245e.lovable.app'
 ];
 
 // --- CORS DEBUGGING ---
