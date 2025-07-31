@@ -8,23 +8,18 @@ export const PlayerDetailsModal = ({ player, onClose }) => {
 
   useEffect(() => {
     if (chartRef.current && player.warHistory) {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
+      if (chartInstance.current) chartInstance.current.destroy();
       chartInstance.current = new Chart(chartRef.current, {
         type: 'line',
         data: {
           labels: player.warHistory.map(h => h.war),
           datasets: [{
-            label: 'War Score',
-            data: player.warHistory.map(h => h.score),
-            borderColor: '#C62828',
-            backgroundColor: 'rgba(198, 40, 40, 0.2)',
-            fill: true,
-            tension: 0.4
+            label: 'War Score', data: player.warHistory.map(h => h.score),
+            borderColor: '#C62828', backgroundColor: 'rgba(198, 40, 40, 0.2)',
+            fill: true, tension: 0.4
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#B0BEC5' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }, x: { ticks: { color: '#B0BEC5' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } } }, plugins: { legend: { display: false } } }
       });
     }
     return () => { if (chartInstance.current) chartInstance.current.destroy(); };
@@ -36,7 +31,7 @@ export const PlayerDetailsModal = ({ player, onClose }) => {
         <div className="modal-header">
           <div>
             <h2 style={{ margin: 0 }}>{player.name}</h2>
-            <p style={{ margin: 0 }}>{player.role} - TH{player.townHallLevel}</p>
+            <p style={{ margin: 0 }}>{player.role.replace('admin', 'Elder').replace('coLeader', 'Co-Leader')} - TH{player.townHallLevel}</p>
           </div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
