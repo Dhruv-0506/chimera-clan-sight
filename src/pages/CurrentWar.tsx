@@ -1,23 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
-import { Sword, Clock, Trophy, Users } from 'lucide-react'; // Assuming you use lucide-react
+import { Sword, Users, Trophy, Clock } from "lucide-react";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-const fetchCurrentWar = async () => {
-    if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    const response = await fetch(`${BACKEND_URL}/api/current-war`);
-    if (!response.ok) throw new Error("Network response was not ok");
-    const result = await response.json();
-    if (result.error) throw new Error(result.error);
-    return result.data;
+// Mock war data
+const warData = {
+  status: "In Progress",
+  timeRemaining: "18h 24m",
+  clanStars: 42,
+  enemyStars: 38,
+  clanDestruction: 87.5,
+  enemyDestruction: 82.3,
+  attacks: [
+    { player: "DragonSlayer", target: "#1", stars: 3, destruction: 95 },
+    { player: "StormBreaker", target: "#3", stars: 2, destruction: 78 },
+    { player: "IronFist", target: "#5", stars: 3, destruction: 89 },
+    { player: "ShadowHunter", target: "#2", stars: 2, destruction: 71 },
+    { player: "FireStorm", target: "#8", stars: 3, destruction: 92 },
+    { player: "ThunderBolt", target: "#6", stars: 2, destruction: 84 },
+  ]
 };
 
 export default function CurrentWar() {
-  const { data: warData, isLoading, error } = useQuery({
-    queryKey: ['currentWar'],
-    queryFn: fetchCurrentWar
-  });
-
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
@@ -26,53 +27,91 @@ export default function CurrentWar() {
           <p className="text-muted-foreground">Live battle analytics and performance tracking</p>
         </div>
 
-        {isLoading && <p className="text-center text-muted-foreground">Loading Current War Data...</p>}
-        {error && <p className="text-center text-red-400">Error: {error.message}</p>}
-        
-        {warData && warData.state !== 'notInWar' ? (
-          <>
-            {/* War Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="glass-panel p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Sword className="text-primary-glow" size={24} />
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
-                </div>
-                <div className="text-2xl font-bold text-foreground">{warData.state}</div>
-              </div>
-              {/* Other stat cards can be added here similarly */}
+        {/* War Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Sword className="text-primary-glow" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
             </div>
+            <div className="text-2xl font-bold text-foreground">{warData.status}</div>
+          </div>
 
-            {/* Recent Attacks Table */}
-            <div className="glass-panel p-6">
-              <h2 className="text-2xl font-semibold text-foreground mb-6">Attacks</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-glass-border">
-                      <th className="text-left py-3 px-4 text-primary-glow font-semibold">Player</th>
-                      <th className="text-left py-3 px-4 text-primary-glow font-semibold">Stars</th>
-                      <th className="text-left py-3 px-4 text-primary-glow font-semibold">Destruction</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {warData.clan.members.filter((m: any) => m.attacks).map((member: any) => 
-                        member.attacks.map((attack: any, index: number) => (
-                           <tr key={`${member.tag}-${index}`} className="border-b border-glass-border hover:bg-glass-hover">
-                                <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
-                                <td className="py-3 px-4 text-yellow-400">{'⭐'.repeat(attack.stars)}</td>
-                                <td className="py-3 px-4 text-primary-glow font-semibold">{attack.destructionPercentage}%</td>
-                           </tr>
-                        ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Clock className="text-blue-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Time Left</span>
             </div>
-          </>
-        ) : (
-          !isLoading && <div className="glass-panel p-6 text-center text-muted-foreground">No active war found.</div>
-        )}
+            <div className="text-2xl font-bold red-glow">{warData.timeRemaining}</div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Trophy className="text-yellow-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Stars</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">
+              <span className="text-primary-glow">{warData.clanStars}</span>
+              <span className="text-muted-foreground"> - {warData.enemyStars}</span>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Users className="text-purple-400" size={24} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Destruction</span>
+            </div>
+            <div className="text-lg font-bold text-foreground">
+              <span className="text-primary-glow">{warData.clanDestruction}%</span>
+              <span className="text-muted-foreground"> - {warData.enemyDestruction}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Attacks Table */}
+        <div className="glass-panel p-6">
+          <h2 className="text-2xl font-semibold text-foreground mb-6">Recent Attacks</h2>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Player</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Target</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Stars</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Destruction</th>
+                </tr>
+              </thead>
+              <tbody>
+                {warData.attacks.map((attack, index) => (
+                  <tr key={index} className="border-b border-glass-border hover:bg-glass-hover transition-colors">
+                    <td className="py-3 px-4 text-foreground font-medium">{attack.player}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{attack.target}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-1">
+                        {[...Array(3)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < attack.stars
+                                ? "text-yellow-400 drop-shadow-glow"
+                                : "text-muted-foreground/30"
+                            }`}
+                          >
+                            ⭐
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-primary-glow font-semibold">{attack.destruction}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
