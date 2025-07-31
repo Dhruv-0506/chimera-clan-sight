@@ -1,32 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, Calendar, Star, TrendingUp, PieChart } from "lucide-react";
+import { Calendar, Star, TrendingUp, PieChart } from "lucide-react";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-const fetchWarLog = async () => {
+const fetchArchiveData = async () => {
     if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    const response = await fetch(`${BACKEND_URL}/api/war-log`);
+    const response = await fetch(`${BACKEND_URL}/api/war-log-stats`);
     const result = await response.json();
     if (result.error) throw new Error(result.error);
-    return result.data.items.filter((war: any) => war.clan.attacks !== undefined);
-};
-
-const calculateStats = (wars) => {
-    if (!wars || wars.length === 0) return { totalWars: 0, winRate: 0, avgStars: 0, avgDestruction: 0 };
-    const wins = wars.filter(w => w.result === 'win').length;
-    const totalStars = wars.reduce((sum, w) => sum + w.clan.stars, 0);
-    const totalDestruction = wars.reduce((sum, w) => sum + w.clan.destructionPercentage, 0);
-    return {
-        totalWars: wars.length,
-        winRate: Math.round((wins / wars.length) * 100),
-        avgStars: Math.round(totalStars / wars.length),
-        avgDestruction: Math.round(totalDestruction / wars.length)
-    };
+    return result.data;
 };
 
 export default function Archives() {
-  const { data: recentWars, isLoading, error } = useQuery({ queryKey: ['warLog'], queryFn: fetchWarLog });
-  const stats = calculateStats(recentWars);
+  const { data: archiveData, isLoading, error } = useQuery({ queryKey: ['archiveData'], queryFn: fetchArchiveData });
 
   return (
     <div className="min-h-screen pt-24 px-6">
@@ -39,13 +25,13 @@ export default function Archives() {
         {isLoading && <p className="text-center text-muted-foreground">Loading Archives...</p>}
         {error && <p className="text-center text-red-400">Error: {error.message}</p>}
         
-        {recentWars && (
+        {archiveData && (
             <>
                 <div className="stats-grid">
-                    <div className="stat-card"><div className="stat-header"><Calendar size={18}/><span>Total Wars</span></div><div className="stat-value">{stats.totalWars}</div></div>
-                    <div className="stat-card"><div className="stat-header"><TrendingUp size={18}/><span>Win Rate</span></div><div className="stat-value" style={{color: '#4CAF50'}}>{stats.winRate}%</div></div>
-                    <div className="stat-card"><div className="stat-header"><Star size={18}/><span>Avg Stars</span></div><div className="stat-value">{stats.avgStars}</div></div>
-                    <div className="stat-card"><div className="stat-header"><PieChart size={18}/><span>Avg Destruction</span></div><div className="stat-value">{stats.avgDestruction}%</div></div>
+                    <div className="stat-card"><div className="stat-header"><Calendar size={18}/><span>Total Wars</span></div><div className="stat-value">{archiveData.stats.totalWars}</div></div>
+                    <div className="stat-card"><div className="stat-header"><TrendingUp size={18}/><span>Win Rate</span></div><div className="stat-value" style={{color: '#4CAF50'}}>{archiveData.stats.winRate}%</div></div>
+                    <div className="stat-card"><div className="stat-header"><Star size={18}/><span>Avg Stars</span></div><div className="stat-value">{archiveData.stats.avgStars}</div></div>
+                    <div className="stat-card"><div className="stat-header"><PieChart size={18}/><span>Avg Destruction</span></div><div className="stat-value">{archiveData.stats.avgDestruction}%</div></div>
                 </div>
 
                 <div className="glass-panel">
@@ -60,7 +46,7 @@ export default function Archives() {
                             </tr>
                         </thead>
                         <tbody>
-                        {recentWars.map((war, index) => (
+                        {archiveData.wars.slice(0, 15).map((war, index) => (
                             <tr key={index} className="border-b border-glass-border hover:bg-glass-hover">
                                 <td className="py-3 px-4 text-foreground font-medium">{war.opponent.name}</td>
                                 <td className="py-3 px-4"><span className={`result-pill ${war.result}`}>{war.result}</span></td>
