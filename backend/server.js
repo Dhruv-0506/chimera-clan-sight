@@ -11,7 +11,24 @@ const PORT = process.env.PORT || 3001;
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
-app.use(cors()); // Allow your frontend to make requests to this backend
+import cors from 'cors';
+
+const allowedOrigins = [
+  'http://localhost:3000', // For your local development
+  'https://YOUR_FRONTEND_URL.onrender.com' // FOR YOUR DEPLOYED SITE
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+})); // Allow your frontend to make requests to this backend
 
 const cocApi = axios.create({
     baseURL: 'https://api.clashofclans.com/v1',
