@@ -2,7 +2,8 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import 'dotenv/config';
-import 'math';
+
+// The incorrect 'import 'math';' line has been permanently REMOVED.
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +23,10 @@ const makeApiRequest = async (endpoint) => {
         return { data: response.data, error: null };
     } catch (error) {
         const status = error.response?.status;
-        return { data: null, error: `API Error: Status ${status}` };
+        if (status === 404) {
+            return { data: null, error: "Required data not found (e.g., no active war or public war log disabled)." };
+        }
+        return { data: null, error: `Clash of Clans API Error: Status ${status}` };
     }
 };
 
@@ -33,7 +37,7 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     if (!defender_details) return 0;
     const defender_th = defender_details.townhallLevel || attacker_th;
     const th_differential = attacker_th - defender_th;
-    const th_modifier = Math.pow(1.6, -th_differential);
+    const th_modifier = Math.pow(1.6, -th_differential); // Uses built-in Math object
     const map_rank = defender_details.mapPosition || team_size;
     let map_modifier = 1.0;
     if (map_rank <= team_size / 3) map_modifier = 1.15;
@@ -86,7 +90,11 @@ app.get('/api/player-roster', async (req, res) => {
     } catch (error) { res.status(500).json({ data: null, error: `Backend Error: ${error.message}` }); }
 });
 
-app.get('/api/current-war', async (req, res) => { /* ... Unchanged ... */ });
+app.get('/api/current-war', async (req, res) => {
+    const encodedTag = CLAN_TAG.replace('#', '%23');
+    const result = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+    res.json(result);
+});
 
 app.get('/api/war-log', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
