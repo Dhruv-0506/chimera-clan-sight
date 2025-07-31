@@ -1,29 +1,147 @@
-import { Medal, TrendingUp, Users, Trophy } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Medal, TrendingUp, Users, Trophy, ShieldAlert } from "lucide-react";
 
-// Mock CWL data
-const cwlData = {
-  currentLeague: "Champion League II",
-  round: "Day 4 of 7",
-  position: 2,
-  totalClans: 8,
-  stars: 186,
-  destructionPercentage: 89.4,
-  bonusesRemaining: 3,
-  matches: [
-    { day: 1, opponent: "Warriors United", result: "Win", stars: "28-24", destruction: "91.2% - 87.3%" },
-    { day: 2, opponent: "Elite Guardians", result: "Win", stars: "26-22", destruction: "88.7% - 84.1%" },
-    { day: 3, opponent: "Dragon Force", result: "Loss", stars: "24-27", destruction: "86.9% - 92.4%" },
-    { day: 4, opponent: "Phoenix Rising", result: "Win", stars: "29-21", destruction: "93.1% - 82.7%" },
-  ],
-  topPerformers: [
-    { name: "DragonSlayer", stars: 21, averageDestruction: 94.2 },
-    { name: "StormBreaker", stars: 19, averageDestruction: 89.7 },
-    { name: "IronFist", stars: 17, averageDestruction: 87.3 },
-    { name: "ShadowHunter", stars: 16, averageDestruction: 85.9 },
-  ]
+const CLAN_TAG = "#2G8LRGU2Q"; // Your clan's tag to identify it in the API response
+
+// --- HELPER FUNCTIONS to process API data ---
+
+// This function takes the raw API responses and transforms them into the clean format the UI expects.
+const processCwlData = (groupData, warLogData) => {
+    const ourClan = groupData.clans.find(c => c.tag === CLAN_TAG);
+    if (!ourClan) throw new Error("Our clan not found in CWL group.");
+
+    // 1. Calculate Standings
+    const sortedClans = [...groupData.clans].sort((a, b) => {
+        if (b.stars !== a.stars) return b.stars - a.stars;
+        return b.destructionPercentage - a.destructionPercentage;
+    });
+    const ourPosition = sortedClans.findIndex(c => c.tag === CLAN_TAG) + 1;
+
+    // 2. Determine Current Round
+    const currentRoundIndex = groupData.rounds.findIndex(round => round.warTags.some(tag => tag !== '#0'));
+    const currentRound = currentRoundIndex !== -1 ? currentRoundIndex + 1 : groupData.rounds.length;
+
+    // 3. Process Match History
+    const cwlWars = (warLogData.cwl?.wars || []).filter(war => groupData.season === war.season);
+    const matches = groupData.rounds.slice(0, currentRound).map((round, index) => {
+        const warTag = round.warTags.find(tag => tag !== '#0');
+        const war = cwlWars.find(w => w.warTag === warTag);
+
+        if (!war || !war.opponent) {
+            return {
+                day: index + 1,
+                opponent: 'War data pending...',
+                result: 'Pending',
+                stars: 'N/A',
+                destruction: 'N/A'
+            };
+        }
+        return {
+            day: index + 1,
+            opponent: war.opponent.name,
+            result: war.result || 'Ongoing',
+            stars: `${war.clan.stars}-${war.opponent.stars}`,
+            destruction: `${war.clan.destructionPercentage.toFixed(1)}% - ${war.opponent.destructionPercentage.toFixed(1)}%`
+        };
+    }).reverse(); // Show most recent day first
+
+    // 4. Calculate Top Performers
+    const playerStats = new Map();
+    for (const war of cwlWars) {
+        if (!war.clan.members) continue;
+        for (const member of war.clan.members) {
+            const stats = playerStats.get(member.tag) || { name: member.name, stars: 0, attacks: 0, destruction: 0 };
+            stats.stars += member.stars || 0;
+            if (member.attacks) {
+                stats.attacks += member.attacks.length;
+                stats.destruction += member.attacks.reduce((sum, atk) => sum + atk.destructionPercentage, 0);
+            }
+            playerStats.set(member.tag, stats);
+        }
+    }
+    const topPerformers = Array.from(playerStats.values())
+        .sort((a, b) => b.stars - a.stars)
+        .slice(0, 4)
+        .map(p => ({
+            name: p.name,
+            stars: p.stars,
+            averageDestruction: p.attacks > 0 ? (p.destruction / p.attacks).toFixed(1) : 0
+        }));
+
+    return {
+        currentLeague: ourClan.league.name,
+        round: `Day ${currentRound} of ${groupData.rounds.length}`,
+        position: ourPosition,
+        totalClans: groupData.clans.length,
+        stars: ourClan.stars,
+        matches,
+        topPerformers
+    };
 };
 
+
+// --- COMPONENT ---
+
 export default function CWL() {
+  const [cwlData, setCwlData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchCwlPageData = async () => {
+        try {
+            const [groupResponse, warLogResponse] = await Promise.all([
+                fetch('/api/cwl'),
+                fetch('/api/war-log-stats')
+            ]);
+            
+            const groupResult = await groupResponse.json();
+            const warLogResult = await warLogResponse.json();
+
+            if (groupResult.error || warLogResult.error) {
+                throw new Error(groupResult.error || warLogResult.error);
+            }
+
+            if (groupResult.data.state === 'notInWar') {
+                 throw new Error("The clan is not currently in a Clan War League.");
+            }
+
+            const processedData = processCwlData(groupResult.data, warLogResult.data);
+            setCwlData(processedData);
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchCwlPageData();
+  }, []);
+
+  if (isLoading) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="text-center">
+                <h1 className="text-2xl font-bold text-foreground">Loading CWL Data...</h1>
+                <p className="text-muted-foreground">Analyzing championship performance.</p>
+            </div>
+        </div>
+    );
+  }
+
+  if (error || !cwlData) {
+    return (
+        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+            <div className="glass-panel p-8 text-center">
+                <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
+                <h1 className="text-2xl font-bold text-foreground">CWL Data Unavailable</h1>
+                <p className="text-muted-foreground">{error || "Could not retrieve CWL information."}</p>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
@@ -83,9 +201,9 @@ export default function CWL() {
                       <div className="text-foreground font-medium">{match.opponent}</div>
                     </div>
                     <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      match.result === "Win" 
+                      match.result === "Win" || match.result === "win"
                         ? "bg-green-500/20 text-green-400" 
-                        : "bg-red-500/20 text-red-400"
+                        : (match.result === "Loss" || match.result === "lose" ? "bg-red-500/20 text-red-400" : "bg-gray-500/20 text-gray-400")
                     }`}>
                       {match.result}
                     </div>
