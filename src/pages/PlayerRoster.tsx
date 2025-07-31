@@ -35,7 +35,7 @@ export default function PlayerRoster() {
         
         {players && (
           <div className="grid gap-4">
-            {players.sort((a,b) => b.averageWarScore - a.averageWarScore).map((player: any) => (
+            {players.sort((a, b) => b.averageWarScore - a.averageWarScore).map((player: any) => (
               <PlayerCard
                 key={player.tag}
                 player={player}
