@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import 'dotenv/config';
-import 'math';
+// The incorrect 'import 'math';' line has been REMOVED.
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,6 +41,7 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     if (!defender_details) return 0;
     const defender_th = defender_details.townhallLevel || attacker_th;
     const th_differential = attacker_th - defender_th;
+    // Uses the built-in JavaScript Math object (capital 'M')
     const th_modifier = Math.pow(1.6, -th_differential);
     const map_rank = defender_details.mapPosition || team_size;
     let map_modifier = 1.0;
@@ -80,25 +81,11 @@ const calculateHistoricalPerformance = (clan_members, war_log) => {
     });
 };
 
-const calculateArchiveStats = (war_list) => {
-    if (!war_list || war_list.length === 0) return { totalWars: 0, winRate: 0, avgStars: 0, avgDestruction: 0 };
-    const wins = war_list.filter(w => w.result === 'win').length;
-    const totalStars = war_list.reduce((sum, w) => sum + w.clan.stars, 0);
-    const totalDestruction = war_list.reduce((sum, w) => sum + w.clan.destructionPercentage, 0);
-    return {
-        totalWars: war_list.length,
-        winRate: Math.round((wins / war_list.length) * 100),
-        avgStars: Math.round(totalStars / war_list.length),
-        avgDestruction: Math.round(totalDestruction / war_list.length)
-    };
-};
-
 // --- API ROUTES ---
 
 app.get('/api/player-roster', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
     try {
-        // Fetch both clan details and war log in parallel for efficiency
         const [clanRes, warLogRes] = await Promise.all([
             cocApi.get(`/clans/${encodedTag}`),
             cocApi.get(`/clans/${encodedTag}/warlog`)
