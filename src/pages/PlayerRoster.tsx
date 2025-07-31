@@ -68,13 +68,4 @@ export default function PlayerRoster() {
       )}
     </div>
   );
-}```
-
-### **Final Instructions**
-
-1.  **Replace** the entire contents of `src/index.css` and `src/pages/PlayerRoster.tsx` on your GitHub.
-2.  **Commit the changes.**
-3.  OnRender will see your commits and automatically start a new deployment for your **Static Site (the frontend)**.
-4.  Once the deployment is "Live", go to your website and do a **Hard Refresh** (`Ctrl+Shift+R` or `Cmd+Shift+R`).
-
-This definitive update will resolve all the outstanding issues. The CSS will now correctly render the "liquid glass" UI, and the Player Roster page will finally have the correct card-based layout, display the accurate average scores, and have a fully functional pop-up with the performance graph. Your dashboard will be complete and correct.
+}
