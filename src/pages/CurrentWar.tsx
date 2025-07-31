@@ -15,7 +15,7 @@ export default function CurrentWar() {
   const { data: warData, isLoading, error } = useQuery({
     queryKey: ['currentWar'],
     queryFn: fetchCurrentWar,
-    retry: false // Don't retry on 404 "not in war" errors
+    retry: false
   });
 
   const renderContent = () => {
@@ -24,43 +24,48 @@ export default function CurrentWar() {
     
     if (warData && warData.state !== 'notInWar') {
       return (
-        <>
-          <div className="glass-panel p-6">
-            <h2 className="text-2xl font-semibold text-foreground mb-6">Recent Attacks</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-glass-border">
-                    <th className="text-left py-3 px-4 text-primary-glow font-semibold">Player</th>
-                    <th className="text-left py-3 px-4 text-primary-glow font-semibold">Attacks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {warData.clan.members.sort((a,b) => a.mapPosition - b.mapPosition).map((member) => (
-                    <tr key={member.tag} className="border-b border-glass-border">
-                      <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
-                      <td className="py-3 px-4">
-                        {member.attacks ? (
-                          <div className="flex flex-col gap-2">
-                            {member.attacks.map((attack, index) => (
-                              <div key={index} className="flex items-center gap-4">
-                                <span className="text-yellow-400">{'⭐'.repeat(attack.stars)}</span>
-                                <span className="text-primary-glow font-semibold">{attack.destructionPercentage}%</span>
-                                <span className="text-muted-foreground">on #{attack.defenderTag.slice(-4)}</span>
-                              </div>
-                            ))}
-                          </div>
+        <div className="glass-panel p-6">
+          <h2 className="text-2xl font-semibold text-foreground mb-6">Recent Attacks</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Player</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Stars</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Destruction</th>
+                  <th className="text-left py-3 px-4 text-primary-glow font-semibold">Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                {warData.clan.members.sort((a,b) => a.mapPosition - b.mapPosition).map((member) => (
+                    // This creates a fragment for each player's attacks
+                    <>
+                        {member.attacks && member.attacks.length > 0 ? (
+                            member.attacks.map((attack, index) => (
+                                <tr key={`${member.tag}-${index}`} className="border-b border-glass-border hover:bg-glass-hover">
+                                    {/* The player name only appears on the FIRST attack row */}
+                                    {index === 0 && (
+                                        <td rowSpan={member.attacks.length} className="py-3 px-4 text-foreground font-medium align-top">
+                                            {member.name}
+                                        </td>
+                                    )}
+                                    <td className="py-3 px-4 text-yellow-400">{'⭐'.repeat(attack.stars)}</td>
+                                    <td className="py-3 px-4 text-primary-glow font-semibold">{attack.destructionPercentage}%</td>
+                                    <td className="py-3 px-4 text-muted-foreground">on #{attack.defenderTag.slice(-4)}</td>
+                                </tr>
+                            ))
                         ) : (
-                          <span className="text-muted-foreground">No attacks yet</span>
+                            <tr className="border-b border-glass-border hover:bg-glass-hover">
+                                <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
+                                <td colSpan={3} className="py-3 px-4 text-muted-foreground">No attacks yet</td>
+                            </tr>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </>
+        </div>
       );
     }
     return <div className="glass-panel p-6 text-center text-muted-foreground">No active clan war found.</div>;
