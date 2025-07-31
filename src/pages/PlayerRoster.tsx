@@ -1,25 +1,22 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PlayerCard } from "@/components/PlayerCard"; // Assuming you have these components
+import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
 
-// The BACKEND_URL will be provided by OnRender
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// This function fetches the data from our backend API
 const fetchRoster = async () => {
     if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    const response = await fetch(`${BACKEND_URL}/api/clan-info`);
+    const response = await fetch(`${BACKEND_URL}/api/player-roster`);
     if (!response.ok) throw new Error("Network response was not ok");
     const result = await response.json();
     if (result.error) throw new Error(result.error);
-    return result.data.memberList; // Return the list of members
+    return result.data;
 };
 
 export default function PlayerRoster() {
   const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
 
-  // useQuery handles loading and error states for us
   const { data: players, isLoading, error } = useQuery({
     queryKey: ['playerRoster'],
     queryFn: fetchRoster
@@ -33,13 +30,12 @@ export default function PlayerRoster() {
           <p className="text-muted-foreground">Click on any player to view detailed performance analytics</p>
         </div>
 
-        {/* Conditional Rendering based on the query state */}
-        {isLoading && <p className="text-center text-muted-foreground">Loading Roster...</p>}
+        {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
         {error && <p className="text-center text-red-400">Error: {error.message}</p>}
         
         {players && (
           <div className="grid gap-4">
-            {players.map((player: any) => (
+            {players.sort((a,b) => b.averageWarScore - a.averageWarScore).map((player: any) => (
               <PlayerCard
                 key={player.tag}
                 player={player}
