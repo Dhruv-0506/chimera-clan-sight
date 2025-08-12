@@ -1,170 +1,94 @@
-import React, { useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import Chart from 'chart.js/auto';
-import { Home, Trophy, Star, ArrowDownUp } from 'lucide-react';
+/* backend/server.js */
+const express = require('express');
+const axios   = require('axios');
+const cors    = require('cors');
+require('dotenv').config();
 
-const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
+const app       = express();
+const PORT      = process.env.PORT || 3001;
+const API_TOKEN = process.env.CLASH_API_TOKEN;
+const CLAN_TAG  = '#2G8LRGU2Q';
 
-type WarHistoryItem = { war: string; score: number };
+app.use(cors());
 
-const fetchPlayerPerformance = async (playerTag: string) => {
-  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
-  const tag = playerTag.replace('#', '');
-  const res = await fetch(`${BACKEND_URL}/api/player-performance/${tag}`);
-  if (!res.ok) throw new Error('Network response was not ok');
-  const result = await res.json();
-  if (result.error) throw new Error(result.error);
-  return result.data as { averageWarScore: number; warHistory: WarHistoryItem[] };
+const cocApi = axios.create({
+  baseURL: 'https://api.clashofclans.com/v1',
+  headers: { Authorization: `Bearer ${API_TOKEN}` }
+});
+
+const makeApiRequest = async (endpoint) => {
+  try {
+    const { data } = await cocApi.get(endpoint);
+    return { data, error: null };
+  } catch (err) {
+    return { data: null, error: `API Error: ${err.response?.status || err.message}` };
+  }
 };
 
-export const PlayerDetailsModal: React.FC<{
-  player: any;
-  onClose: () => void;
-}> = ({ player, onClose }) => {
-  const chartRef = useRef<HTMLCanvasElement | null>(null);
-  const chartInstance = useRef<Chart | null>(null);
+/* ---------------------------------- */
+/*  War-score helper (same as before) */
+/* ---------------------------------- */
+const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
+  const star_power = { 3: 207, 2: 89, 1: 32, 0: 0 }[attack.stars] || 0;
+  const destruction_factor = 1 + attack.destructionPercentage / 250;
+  const defender = opponent_map.get(attack.defenderTag);
+  if (!defender) return 0;
+  const defender_th = defender.townhallLevel || attacker_th;
+  const th_diff     = attacker_th - defender_th;
+  const th_mod      = Math.pow(1.6, -th_diff);
+  const map_rank    = defender.mapPosition || team_size;
+  let map_mod = 1.0;
+  if (map_rank <= team_size / 3)       map_mod = 1.15;
+  else if (map_rank > (team_size / 3) * 2) map_mod = 0.85;
+  const first_hit_bonus = attack.order === 1 ? (team_size - map_rank) * 0.5 : 0;
+  return star_power * destruction_factor * th_mod * map_mod + first_hit_bonus;
+};
 
-  const { data: performanceData, isLoading, error } = useQuery({
-    queryKey: ['playerPerformance', player.tag],
-    queryFn: () => fetchPlayerPerformance(player.tag),
-    retry: false,
-    enabled: !!player?.tag
-  });
+/* ---------------------------------- */
+/*  Routes                            */
+/* ---------------------------------- */
 
-  useEffect(() => {
-    if (!chartRef.current) return;
-    if (!performanceData?.warHistory) return;
+app.get('/api/clan-info', async (_req, res) => {
+  const result = await makeApiRequest(`/clans/${encodeURIComponent(CLAN_TAG)}`);
+  res.json(result);
+});
 
-    // Destroy existing chart to avoid duplicates
-    if (chartInstance.current) {
-      try {
-        chartInstance.current.destroy();
-      } catch (e) {
-        // ignore
-      } finally {
-        chartInstance.current = null;
-      }
+app.get('/api/player-performance/:playerTag', async (req, res) => {
+  const playerTag = `#${req.params.playerTag}`;   // already has #
+  const clanEnc   = encodeURIComponent(CLAN_TAG);
+
+  try {
+    const { data: warLog, error } = await makeApiRequest(`/clans/${clanEnc}/warlog?limit=50`);
+    if (error) throw new Error(error);
+
+    const warScores = [];
+    for (const war of warLog.items || []) {
+      if (war.state !== 'warEnded' || !war.clan?.members) continue;
+      const member = war.clan.members.find(m => m.tag === playerTag);
+      if (!member?.attacks?.length) continue;
+
+      const opponentMap = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
+      const teamSize    = war.teamSize || 1;
+      const thLevel     = member.townhallLevel;
+
+      const wps = member.attacks
+        .map(a => calculateAttackScore(a, thLevel, teamSize, opponentMap))
+        .reduce((a, b) => a + b, 0);
+      warScores.push(wps);
     }
 
-    // Create a new line chart
-    chartInstance.current = new Chart(chartRef.current, {
-      type: 'line',
-      data: {
-        labels: performanceData.warHistory.map(h => h.war),
-        datasets: [
-          {
-            label: 'War Score',
-            data: performanceData.warHistory.map(h => h.score),
-            borderColor: '#C62828',
-            backgroundColor: 'rgba(198, 40, 40, 0.2)',
-            fill: true,
-            tension: 0.4
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { maxRotation: 45, minRotation: 0 } },
-          y: { beginAtZero: true }
-        }
-      }
-    });
+    const avg = warScores.length ? warScores.reduce((a, b) => a + b, 0) / warScores.length : 0;
+    const history = warScores.slice(-15).reverse().map((s, i) => ({ war: `War ${i + 1}`, score: s }));
+    res.json({ data: { averageWarScore: avg, warHistory: history }, error: null });
 
-    return () => {
-      if (chartInstance.current) {
-        try {
-          chartInstance.current.destroy();
-        } catch (e) {
-          // ignore
-        } finally {
-          chartInstance.current = null;
-        }
-      }
-    };
-  }, [performanceData]);
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
+});
 
-  // Safe display helpers
-  const avgScore = performanceData?.averageWarScore ?? 0;
-  const lastWar = player?.lastWarStars ?? 0;
+app.get('/api/current-war', async (_req, res) => {
+  const result = await makeApiRequest(`/clans/${encodeURIComponent(CLAN_TAG)}/currentwar`);
+  res.json(result);
+});
 
-  return (
-    <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 900, width: '100%' }}>
-        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ margin: 0 }}>{player?.name ?? 'Unknown Player'}</h2>
-            <p style={{ margin: 0 }}>
-              {(player?.role ?? 'member').replace('coLeader', 'Co-Leader').replace('admin', 'Admin')} - TH{player?.townHallLevel ?? 0}
-            </p>
-          </div>
-          <button className="modal-close" onClick={onClose} aria-label="Close" style={{ fontSize: 24, lineHeight: 1 }}>&times;</button>
-        </div>
-
-        <div className="modal-body" style={{ display: 'flex', gap: 24, paddingTop: 16 }}>
-          <div style={{ flex: '0 0 280px' }}>
-            <div className="stats-grid" style={{ display: 'grid', gap: 12 }}>
-              <div className="stat-card glass-panel p-4">
-                <div className="stat-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Home />
-                    <div>
-                      <div className="stat-label">TH</div>
-                      <div className="stat-value">{player?.townHallLevel ?? 0}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="stat-value">{player?.trophies ?? 0}</div>
-                    <div className="stat-label">Trophies</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="stat-card glass-panel p-4">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Trophy />
-                    <div>
-                      <div className="stat-label">Last War Stars</div>
-                      <div className="stat-value">{lastWar}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="stat-value">{avgScore ? Math.round(avgScore) : 0}</div>
-                    <div className="stat-label">Avg War Score</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="stat-card glass-panel p-4">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Star />
-                    <div>
-                      <div className="stat-label">War History Count</div>
-                      <div className="stat-value">{performanceData?.warHistory?.length ?? 0}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="stat-value">{performanceData?.warHistory?.slice(-1)[0]?.score ?? 0}</div>
-                    <div className="stat-label">Latest WPS</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-graph" style={{ flex: 1, minHeight: 220 }}>
-            <h3>War Performance Over Time</h3>
-            {isLoading && <p>Loading graph...</p>}
-            {error && <p className="text-red-400">Could not load graph data.</p>}
-            <div style={{ height: 260 }}>
-              <canvas ref={chartRef}></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
