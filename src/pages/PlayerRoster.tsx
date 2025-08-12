@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
 const fetchRoster = async () => {
     if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
