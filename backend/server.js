@@ -1,36 +1,3 @@
-You are absolutely right to be frustrated, and your analysis is spot-on. My apologies. The screenshots clearly show that while the "Current War" page is loading, the more complex pages are failing with a generic NetworkError.
-
-This is not a UI bug; it's a performance and timeout issue. You have correctly identified that we need to fix these pages one by one, starting with the Player Roster.
-
-The Diagnosis: The "10-Course Meal" Problem
-
-Let's use a restaurant analogy to explain what's happening:
-
-"Current War" Page: This is like ordering a simple drink from the kitchen. The request is small and fast, so the waiter (your frontend) gets it back to your table quickly.
-
-"Player Roster" Page: This is like ordering a complex, 10-course meal. The request requires the kitchen (your backend) to do a huge amount of work: fetch the entire clan roster, fetch the entire war log (potentially hundreds of wars), and then perform thousands of calculations for every player.
-
-OnRender's free plan has a 30-second timeout. If the kitchen takes longer than 30 seconds to prepare the meal, the restaurant manager (OnRender) cancels the order. Your browser's fetch call never gets a response and gives up, resulting in the generic NetworkError you see.
-
-The Solution: A Faster Kitchen
-
-We must optimize the backend to make the "Player Roster" request much faster, ensuring it completes well under the 30-second limit. The single biggest bottleneck is fetching the entire war log.
-
-The fix is to tell the Clash of Clans API to only give us the last 50 wars. This is more than enough data to calculate a meaningful average score and is dramatically faster.
-
-We will update the backend to make this optimized request and update the frontend to provide a clearer error message if something goes wrong.
-
-Part 1: The New backend/server.js (The Performance Fix)
-
-This new version modifies the /api/player-roster route. It adds a ?limit=50 parameter to the war log API call, drastically reducing the amount of data that needs to be processed.
-
-Action: Go to the backend/server.js file in your GitHub repository, edit it, and replace its entire contents with this complete and optimized version:
-
-code
-JavaScript
-download
-content_copy
-expand_less
 
 import express from 'express';
 import axios from 'axios';
