@@ -1,81 +1,150 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Chart } from 'chart.js/auto';
-import { Home, Trophy, Star, ArrowDownUp } from 'lucide-react';
+import Chart from 'chart.js/auto';
+import { Home, Trophy, Star } from 'lucide-react';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
-const fetchPlayerPerformance = async (playerTag) => {
-    if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    const tag = playerTag.replace('#', ''); // Remove '#' for the URL parameter
-    const response = await fetch(`${BACKEND_URL}/api/player-performance/${tag}`);
-    if (!response.ok) throw new Error("Network response was not ok");
-    const result = await response.json();
-    if (result.error) throw new Error(result.error);
-    return result.data;
+// Define clear types for your data
+type WarHistoryItem = {
+  war: string;
+  score: number;
 };
 
-export const PlayerDetailsModal = ({ player, onClose }) => {
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
+type PlayerPerformanceData = {
+  averageWarScore: number;
+  warHistory: WarHistoryItem[];
+};
 
-  const { data: performanceData, isLoading, error } = useQuery({
+// Async function to fetch player data
+const fetchPlayerPerformance = async (playerTag: string): Promise<PlayerPerformanceData> => {
+  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
+  const tag = playerTag.replace('#', '');
+  const res = await fetch(`${BACKEND_URL}/api/player-performance/${tag}`);
+  if (!res.ok) throw new Error('Network response was not ok');
+  const result = await res.json();
+  if (result.error) throw new Error(result.error);
+  return result.data;
+};
+
+// Define props for the component
+interface PlayerDetailsModalProps {
+  player: any; // Consider defining a stricter type for the player object
+  onClose: () => void;
+}
+
+export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ player, onClose }) => {
+  const chartRef = useRef<HTMLCanvasElement | null>(null);
+  const chartInstance = useRef<Chart | null>(null);
+
+  const { data: performanceData, isLoading, error } = useQuery<PlayerPerformanceData>({
     queryKey: ['playerPerformance', player.tag],
     queryFn: () => fetchPlayerPerformance(player.tag),
-    retry: false
+    enabled: !!player?.tag, // Only run query if player tag exists
+    retry: false,
   });
 
   useEffect(() => {
-    if (chartRef.current && performanceData?.warHistory) {
-      if (chartInstance.current) chartInstance.current.destroy();
-      chartInstance.current = new Chart(chartRef.current, {
-        type: 'line',
-        data: {
-          labels: performanceData.warHistory.map(h => h.war),
-          datasets: [{
-            label: 'War Score', data: performanceData.warHistory.map(h => h.score),
-            borderColor: '#C62828', backgroundColor: 'rgba(198, 40, 40, 0.2)',
-            fill: true, tension: 0.4
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+    if (!chartRef.current || !performanceData?.warHistory) {
+      return;
     }
-    return () => { if (chartInstance.current) chartInstance.current.destroy(); };
+
+    // Destroy the previous chart instance before creating a new one
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+
+    // Create the new line chart
+    chartInstance.current = new Chart(chartRef.current, {
+      type: 'line',
+      data: {
+        labels: performanceData.warHistory.map(h => h.war),
+        datasets: [
+          {
+            label: 'War Score',
+            data: performanceData.warHistory.map(h => h.score),
+            borderColor: '#C62828',
+            backgroundColor: 'rgba(198, 40, 40, 0.2)',
+            fill: true,
+            tension: 0.4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { maxRotation: 45, minRotation: 0, color: '#A1A1AA' } },
+          y: { beginAtZero: true, ticks: { color: '#A1A1AA' } },
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#FFFFFF'
+            }
+          }
+        }
+      },
+    });
+
+    // Cleanup function to destroy chart on component unmount
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
   }, [performanceData]);
 
+  const avgScore = performanceData?.averageWarScore ?? 0;
+
   return (
-    <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h2 style={{ margin: 0 }}>{player.name}</h2>
-            <p style={{ margin: 0 }}>{player.role.replace('admin', 'Elder').replace('coLeader', 'Co-Leader')} - TH{player.townHallLevel}</p>
+            <h2>{player?.name ?? 'Unknown Player'}</h2>
+            <p>
+              {player?.role?.replace('coLeader', 'Co-Leader')?.replace('admin', 'Elder') ?? 'Member'} - TH{player?.townHallLevel ?? 0}
+            </p>
           </div>
-          <button className="modal-close" onClick={onClose}>&times;</button>
+          <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
         </div>
+
         <div className="modal-body">
           <div className="modal-profile">
-            <h3>Profile Details</h3>
-            <ul>
-              <li><div><Home size={18}/><span>Town Hall</span></div><strong>{player.townHallLevel}</strong></li>
-              <li><div><Trophy size={18}/><span>Trophies</span></div><strong>{player.trophies}</strong></li>
-              {/* THE FIX: Use '|| 0' to prevent blank spaces if data is missing */}
-              <li><div><Star size={18}/><span>War Stars</span></div><strong>{player.warStars || 0}</strong></li>
-              <li><div><ArrowDownUp size={18}/><span>Donations</span></div><strong>{player.donations || 0}</strong></li>
-            </ul>
-            <div style={{marginTop: '1rem'}}>
-                <h3>Average War Score</h3>
-                {isLoading && <p>Calculating...</p>}
-                {error && <p className="text-red-400">Could not load score.</p>}
-                {performanceData && <div className="stat-value red-glow">{performanceData.averageWarScore.toFixed(0)}</div>}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <Home />
+                <div>
+                  <div className="stat-label">Town Hall</div>
+                  <div className="stat-value">{player?.townHallLevel ?? 0}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <Trophy />
+                <div>
+                  <div className="stat-label">Trophies</div>
+                  <div className="stat-value">{player?.trophies ?? 0}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <Star />
+                <div>
+                  <div className="stat-label">Avg War Score</div>
+                  <div className="stat-value red-glow">{Math.round(avgScore)}</div>
+                </div>
+              </div>
             </div>
           </div>
+
           <div className="modal-graph">
             <h3>War Performance Over Time</h3>
             {isLoading && <p>Loading graph...</p>}
             {error && <p className="text-red-400">Could not load graph data.</p>}
-            <canvas ref={chartRef}></canvas>
+            <div className="chart-container">
+              <canvas ref={chartRef}></canvas>
+            </div>
           </div>
         </div>
       </div>
