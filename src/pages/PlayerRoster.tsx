@@ -1,74 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
-import { ShieldAlert } from 'lucide-react';
 
-type Player = {
-  tag: string;
-  name: string;
-  townHallLevel: number;
-  averageWarScore: number;
-  role: 'leader' | 'coLeader' | 'admin' | 'member';
-  trophies: number;
-  warStars: number;
-  donations: number;
-  warHistory: { war: string; score: number }[];
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+const fetchRoster = async () => {
+    if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
+    
+    // Set a timeout on the fetch call itself
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 seconds
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`The backend server responded with status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        return result.data;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error("Request to the backend timed out. Please try again.");
+        }
+        throw error;
+    }
 };
 
 export default function PlayerRoster() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
 
-  useEffect(() => {
-    const fetchPlayerData = async () => {
-        // Define the API URL for production and local development
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        try {
-            const response = await fetch(`${API_URL}/api/player-roster`);
-            const result = await response.json();
+  const { data: players, isLoading, error } = useQuery({
+    queryKey: ['playerRoster'],
+    queryFn: fetchRoster,
+    retry: false
+  });
 
-            if (result.error) {
-                throw new Error(result.error);
-            }
-            
-            const sortedPlayers = result.data.sort((a: Player, b: Player) => b.averageWarScore - a.averageWarScore);
-            setPlayers(sortedPlayers);
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    fetchPlayerData();
-  }, []);
-
-  if (isLoading) {
-    return (
-        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-            <div className="text-center">
-                <h1 className="text-2xl font-bold text-foreground">Calculating Player Scores...</h1>
-                <p className="text-muted-foreground">Analyzing historical performance data.</p>
-            </div>
-        </div>
-    );
-  }
-
-  if (error) {
-    return (
-        <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-            <div className="glass-panel p-8 text-center">
-                <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
-                <h1 className="text-2xl font-bold text-foreground">Player Data Unavailable</h1>
-                <p className="text-muted-foreground">{error}</p>
-            </div>
-        </div>
-    );
-  }
-  
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
@@ -77,15 +51,21 @@ export default function PlayerRoster() {
           <p className="text-muted-foreground">Click on any player to view detailed performance analytics</p>
         </div>
 
-        <div className="grid gap-4">
-          {players.map((player) => (
-            <PlayerCard
-              key={player.tag}
-              player={player}
-              onClick={setSelectedPlayer}
-            />
-          ))}
-        </div>
+        {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
+        
+        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {error.message}</div>}
+        
+        {players && (
+          <div className="player-card-grid">
+            {players.sort((a: any, b: any) => b.averageWarScore - a.averageWarScore).map((player: any) => (
+              <PlayerCard
+                key={player.tag}
+                player={player}
+                onClick={setSelectedPlayer}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedPlayer && (
