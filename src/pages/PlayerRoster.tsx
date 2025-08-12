@@ -1,19 +1,18 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { PlayerCard } from "@/components/PlayerCard";
-import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { PlayerCard } from '@/components/PlayerCard';
+import { PlayerDetailsModal } from '@/components/PlayerDetailsModal';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? 'https://chimera-clan-sight.onrender.com' : 'http://localhost:3001');
+const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
 const fetchRoster = async () => {
-  if (!API_URL) throw new Error("Backend URL is not configured.");
+  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
 
-  // Set a timeout on the fetch call itself
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 seconds
+  const timeoutId = setTimeout(() => controller.abort(), 28000);
 
   try {
-    const response = await fetch(`${API_URL}/api/player-roster`, { signal: controller.signal });
+    const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -24,12 +23,10 @@ const fetchRoster = async () => {
     if (result.error) {
       throw new Error(result.error);
     }
-
     return result.data;
   } catch (err: any) {
-    // AbortError check - different runtimes can vary
     if (err && (err.name === 'AbortError' || err.code === 'ABORT_ERR')) {
-      throw new Error("Request to the backend timed out. Please try again.");
+      throw new Error('Request to the backend timed out. Please try again.');
     }
     throw err;
   }
@@ -58,7 +55,7 @@ export default function PlayerRoster() {
 
         {players && (
           <div className="player-card-grid">
-            {players.sort((a: any, b: any) => b.averageWarScore - a.averageWarScore).map((player: any) => (
+            {players.sort((a: any, b: any) => (b.averageWarScore ?? 0) - (a.averageWarScore ?? 0)).map((player: any) => (
               <PlayerCard
                 key={player.tag}
                 player={player}
