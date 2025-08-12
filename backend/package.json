@@ -1,4 +1,49 @@
 {
+
+
+  "name": "chimera-backend",
+
+
+  "version": "1.0.0",
+
+
+  "description": "Backend for Chimera Clan Sight",
+
+
+  "main": "server.js",
+
+
+  "name": "vite_react_shadcn_ts",
+
+
+  "private": true,
+
+
+  "version": "0.0.0",
+
+  "type": "module",
+
+  "scripts": {
+
+
+    "start": "node server.js"
+
+
+    "dev": "vite",
+
+
+    "build": "vite build",
+
+
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+
+
+    "preview": "vite preview"
+
+  },
+
+
+{
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
