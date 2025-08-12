@@ -5,15 +5,11 @@ import 'dotenv/config';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// --- CONFIGURATION ---
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
-// --- MIDDLEWARE ---
 app.use(cors());
 
-// --- API HELPER ---
 const cocApi = axios.create({
     baseURL: 'https://api.clashofclans.com/v1',
     headers: { 'Authorization': `Bearer ${API_TOKEN}` }
@@ -25,14 +21,10 @@ const makeApiRequest = async (endpoint) => {
         return { data: response.data, error: null };
     } catch (error) {
         const status = error.response?.status;
-        if (status === 404) {
-            return { data: null, error: "Required data not found (e.g., no active war or public war log disabled)." };
-        }
-        return { data: null, error: `Clash of Clans API Error: Status ${status}` };
+        return { data: null, error: `API Error: Status ${status}` };
     }
 };
 
-// --- ANALYTICS ENGINES ---
 const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     const star_power = {3: 207, 2: 89, 1: 32, 0: 0}[attack.stars] || 0;
     const destruction_factor = 1 + (attack.destructionPercentage / 250);
@@ -49,38 +41,44 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     return ((star_power * destruction_factor) * (th_modifier * map_modifier)) + first_hit_bonus;
 };
 
-const calculateHistoricalPerformance = (clan_members, war_log) => {
-    const player_map = new Map(clan_members.map(m => [m.tag, { ...m, war_scores: [] }]));
-    for (const war of (war_log?.items || [])) {
-        if (war.state !== 'warEnded' || !war.clan?.members) continue;
-        const opponent_map = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
-        const team_size = war.teamSize || 1;
-        for (const member_in_war of war.clan.members) {
-            if (player_map.has(member_in_war.tag) && member_in_war.attacks) {
-                const player_data = player_map.get(member_in_war.tag);
-                const attacker_th = member_in_war.townhallLevel || player_data.townHallLevel;
+// --- API ROUTES ---
+
+app.get('/api/clan-info', async (req, res) => {
+    const encodedTag = CLAN_TAG.replace('#', '%23');
+    const result = await makeApiRequest(`/clans/${encodedTag}`);
+    res.json(result);
+});
+
+app.get('/api/player-performance/:playerTag', async (req, res) => {
+    // THE FIX IS HERE: The playerTag from the URL already includes the '#'.
+    // We no longer add an extra one.
+    const playerTagWithHash = `#${req.params.playerTag}`;
+    const encodedClanTag = CLAN_TAG.replace('#', '%23');
+    
+    try {
+        const { data: warLog, error } = await makeApiRequest(`/clans/${encodedClanTag}/warlog?limit=50`);
+        if (error) throw new Error(error);
+
+        const war_scores = [];
+        for (const war of (warLog?.items || [])) {
+            if (war.state !== 'warEnded' || !war.clan?.members) continue;
+
+            const member_in_war = war.clan.members.find(m => m.tag === playerTagWithHash);
+            if (member_in_war && member_in_war.attacks) {
+                const opponent_map = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
+                const team_size = war.teamSize || 1;
+                const attacker_th = member_in_war.townhallLevel;
                 const wps = member_in_war.attacks.map(att => calculateAttackScore(att, attacker_th, team_size, opponent_map)).reduce((a, b) => a + b, 0);
-                player_map.get(member_in_war.tag).war_scores.push(wps);
+                war_scores.push(wps);
             }
         }
-    }
-    return Array.from(player_map.values()).map(data => {
-        const total_score = data.war_scores.reduce((a, b) => a + b, 0);
-        const avg_wps = data.war_scores.length > 0 ? total_score / data.war_scores.length : 0;
-        return { ...data, averageWarScore: avg_wps, warHistory: data.war_scores.slice(-15).reverse().map((score, i) => ({ war: `War ${i + 1}`, score })) };
-    });
-};
 
-// --- API ROUTES ---
-app.get('/api/player-roster', async (req, res) => {
-    const encodedTag = CLAN_TAG.replace('#', '%23');
-    try {
-        const [clanRes, warLogRes] = await Promise.all([
-            cocApi.get(`/clans/${encodedTag}`),
-            cocApi.get(`/clans/${encodedTag}/warlog?limit=50`) 
-        ]);
-        const final_data = calculateHistoricalPerformance(clanRes.data.memberList, warLogRes.data);
-        res.json({ data: final_data, error: null });
+        const total_score = war_scores.reduce((a, b) => a + b, 0);
+        const averageWarScore = war_scores.length > 0 ? total_score / war_scores.length : 0;
+        const warHistory = war_scores.slice(-15).reverse().map((score, i) => ({ war: `War ${i + 1}`, score }));
+
+        res.json({ data: { averageWarScore, warHistory }, error: null });
+
     } catch (error) {
         res.status(500).json({ data: null, error: `Backend Error: ${error.message}` });
     }
@@ -92,19 +90,4 @@ app.get('/api/current-war', async (req, res) => {
     res.json(result);
 });
 
-app.get('/api/war-log', async (req, res) => {
-    const encodedTag = CLAN_TAG.replace('#', '%23');
-    const result = await makeApiRequest(`/clans/${encodedTag}/warlog`);
-    res.json(result);
-});
-
-app.get('/api/cwl', async (req, res) => {
-    const encodedTag = CLAN_TAG.replace('#', '%23');
-    const result = await makeApiRequest(`/clans/${encodedTag}/currentwar/leaguegroup`);
-    res.json(result);
-});
-
-// --- SERVER INITIALIZATION ---
-app.listen(PORT, () => {
-    console.log(`Backend server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
