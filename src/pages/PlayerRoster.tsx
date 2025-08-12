@@ -3,35 +3,36 @@ import { useQuery } from "@tanstack/react-query";
 import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
 
-const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
+const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? 'https://chimera-clan-sight.onrender.com' : 'http://localhost:3001');
 
 const fetchRoster = async () => {
-    if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    
-    // Set a timeout on the fetch call itself
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 seconds
+  if (!API_URL) throw new Error("Backend URL is not configured.");
 
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
-        clearTimeout(timeoutId);
+  // Set a timeout on the fetch call itself
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 seconds
 
-        if (!response.ok) {
-            throw new Error(`The backend server responded with status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        if (result.error) {
-            throw new Error(result.error);
-        }
-        
-        return result.data;
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            throw new Error("Request to the backend timed out. Please try again.");
-        }
-        throw error;
+  try {
+    const response = await fetch(`${API_URL}/api/player-roster`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`The backend server responded with status: ${response.status}`);
     }
+
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (err: any) {
+    // AbortError check - different runtimes can vary
+    if (err && (err.name === 'AbortError' || err.code === 'ABORT_ERR')) {
+      throw new Error("Request to the backend timed out. Please try again.");
+    }
+    throw err;
+  }
 };
 
 export default function PlayerRoster() {
@@ -52,9 +53,9 @@ export default function PlayerRoster() {
         </div>
 
         {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
-        
-        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {error.message}</div>}
-        
+
+        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {(error as any).message}</div>}
+
         {players && (
           <div className="player-card-grid">
             {players.sort((a: any, b: any) => b.averageWarScore - a.averageWarScore).map((player: any) => (
