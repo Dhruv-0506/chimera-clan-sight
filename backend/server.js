@@ -1,4 +1,3 @@
-
 import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
@@ -7,11 +6,14 @@ import 'dotenv/config';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// --- CONFIGURATION ---
 const API_TOKEN = process.env.CLASH_API_TOKEN;
 const CLAN_TAG = "#2G8LRGU2Q";
 
+// --- MIDDLEWARE ---
 app.use(cors());
 
+// --- API HELPER ---
 const cocApi = axios.create({
     baseURL: 'https://api.clashofclans.com/v1',
     headers: { 'Authorization': `Bearer ${API_TOKEN}` }
@@ -23,10 +25,14 @@ const makeApiRequest = async (endpoint) => {
         return { data: response.data, error: null };
     } catch (error) {
         const status = error.response?.status;
+        if (status === 404) {
+            return { data: null, error: "Required data not found (e.g., no active war or public war log disabled)." };
+        }
         return { data: null, error: `Clash of Clans API Error: Status ${status}` };
     }
 };
 
+// --- ANALYTICS ENGINES ---
 const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
     const star_power = {3: 207, 2: 89, 1: 32, 0: 0}[attack.stars] || 0;
     const destruction_factor = 1 + (attack.destructionPercentage / 250);
@@ -45,7 +51,6 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
 
 const calculateHistoricalPerformance = (clan_members, war_log) => {
     const player_map = new Map(clan_members.map(m => [m.tag, { ...m, war_scores: [] }]));
-
     for (const war of (war_log?.items || [])) {
         if (war.state !== 'warEnded' || !war.clan?.members) continue;
         const opponent_map = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
@@ -67,11 +72,9 @@ const calculateHistoricalPerformance = (clan_members, war_log) => {
 };
 
 // --- API ROUTES ---
-
 app.get('/api/player-roster', async (req, res) => {
     const encodedTag = CLAN_TAG.replace('#', '%23');
     try {
-        // THE FIX: Add '?limit=50' to the warlog call to make it much faster.
         const [clanRes, warLogRes] = await Promise.all([
             cocApi.get(`/clans/${encodedTag}`),
             cocApi.get(`/clans/${encodedTag}/warlog?limit=50`) 
@@ -89,115 +92,19 @@ app.get('/api/current-war', async (req, res) => {
     res.json(result);
 });
 
-// Other routes remain, powered by the robust makeApiRequest helper
-app.get('/api/war-log', async (req, res) => { /* ... */ });
-app.get('/api/cwl', async (req, res) => { /* ... */ });
+app.get('/api/war-log', async (req, res) => {
+    const encodedTag = CLAN_TAG.replace('#', '%23');
+    const result = await makeApiRequest(`/clans/${encodedTag}/warlog`);
+    res.json(result);
+});
 
-app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
-Part 2: The New src/pages/PlayerRoster.tsx (Better Error Handling)
+app.get('/api/cwl', async (req, res) => {
+    const encodedTag = CLAN_TAG.replace('#', '%23');
+    const result = await makeApiRequest(`/clans/${encodedTag}/currentwar/leaguegroup`);
+    res.json(result);
+});
 
-This version is updated to provide a clearer error message to the user if the backend request fails for any reason.
-
-Action: Go to src/pages/PlayerRoster.tsx on your GitHub, edit it, and replace its entire contents with this:
-
-code
-TypeScript
-download
-content_copy
-expand_less
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { PlayerCard } from "@/components/PlayerCard";
-import { PlayerDetailsModal } from "@/components/PlayerDetailsModal";
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-const fetchRoster = async () => {
-    if (!BACKEND_URL) throw new Error("Backend URL is not configured.");
-    
-    // Set a timeout on the fetch call itself
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28 seconds
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            throw new Error(`The backend server responded with status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        if (result.error) {
-            throw new Error(result.error);
-        }
-        
-        return result.data;
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            throw new Error("Request to the backend timed out. Please try again.");
-        }
-        throw error;
-    }
-};
-
-export default function PlayerRoster() {
-  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
-
-  const { data: players, isLoading, error } = useQuery({
-    queryKey: ['playerRoster'],
-    queryFn: fetchRoster,
-    retry: false
-  });
-
-  return (
-    <div className="min-h-screen pt-24 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Player Roster</h1>
-          <p className="text-muted-foreground">Click on any player to view detailed performance analytics</p>
-        </div>
-
-        {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
-        
-        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {error.message}</div>}
-        
-        {players && (
-          <div className="player-card-grid">
-            {players.sort((a: any, b: any) => b.averageWarScore - a.averageWarScore).map((player: any) => (
-              <PlayerCard
-                key={player.tag}
-                player={player}
-                onClick={setSelectedPlayer}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {selectedPlayer && (
-        <PlayerDetailsModal
-          player={selectedPlayer}
-          onClose={() => setSelectedPlayer(null)}
-        />
-      )}
-    </div>
-  );
-}
-What to Do Next
-
-Replace the entire contents of backend/server.js.
-
-Replace the entire contents of src/pages/PlayerRoster.tsx.
-
-Commit the changes.
-
-Wait for OnRender to automatically redeploy both your backend and frontend.
-
-Once both are "Live", go to your frontend URL and do a Hard Refresh (Ctrl+Shift+R).
-
-The NetworkError on the Player Roster page will now be gone. The page will load successfully, displaying the correct average scores and allowing you to click on players to see their fully functional performance graph.
-
-Once you confirm the Player Roster page is working perfectly, we will apply the same optimization to the Archives page.
+// --- SERVER INITIALIZATION ---
+app.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+});
