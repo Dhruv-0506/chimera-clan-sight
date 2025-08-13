@@ -11,13 +11,11 @@ const CLAN_TAG = '#2G8LRGU2Q';
 
 app.use(cors());
 
-// Axios instance for Clash API
 const cocApi = axios.create({
   baseURL: 'https://api.clashofclans.com/v1',
   headers: { Authorization: `Bearer ${API_TOKEN}` },
 });
 
-// Helper to make API requests
 const makeApiRequest = async (endpoint) => {
   try {
     const { data } = await cocApi.get(endpoint);
@@ -46,25 +44,39 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
 
 /* ---------- Routes ---------- */
 
-// Full clan roster
-app.get('/api/player-roster', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
+// Player Roster (frontend expects memberList)
+app.get('/api/clan-info', async (_req, res) => {
+  const encodedTag = encodeURIComponent(CLAN_TAG);
 
-    const members = Array.isArray(data.members)
-      ? data.members.map(m => ({
-          tag: m.tag,
-          name: m.name,
-          townhallLevel: m.townHallLevel,
-          role: m.role,
-          donations: m.donations ?? 0,
-          donationsReceived: m.donationsReceived ?? 0,
-          attackWins: m.attackWins ?? 0,
-          defenseWins: m.defenseWins ?? 0,
-        }))
-      : [];
+  try {
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+    if (error) return res.status(500).json({ data: null, error });
+
+    // Exact format frontend expects
+    res.json({ data: { memberList: data.members ?? [] }, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
+});
+
+// Full player roster endpoint (optional for other uses)
+app.get('/api/player-roster', async (_req, res) => {
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+
+  try {
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+    if (error) return res.status(500).json({ data: null, error });
+
+    const members = (data.members ?? []).map((m) => ({
+      tag: m.tag,
+      name: m.name,
+      townHallLevel: m.townHallLevel,
+      role: m.role,
+      donations: m.donations ?? 0,
+      donationsReceived: m.donationsReceived ?? 0,
+      attackWins: m.attackWins ?? 0,
+      defenseWins: m.defenseWins ?? 0,
+    }));
 
     res.json({ data: members, error: null });
   } catch (err) {
@@ -72,110 +84,67 @@ app.get('/api/player-roster', async (_req, res) => {
   }
 });
 
-// Alias for frontend: /api/clan-info
-app.get('/api/clan-info', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
-
-    const memberList = Array.isArray(data.members)
-      ? data.members.map(m => ({
-          tag: m.tag,
-          name: m.name,
-          townhallLevel: m.townHallLevel,
-          role: m.role,
-          donations: m.donations ?? 0,
-          donationsReceived: m.donationsReceived ?? 0,
-          attackWins: m.attackWins ?? 0,
-          defenseWins: m.defenseWins ?? 0,
-        }))
-      : [];
-
-    res.json({ data: { memberList }, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
+// Current War
+app.get('/api/current-war', async (_req, res) => {
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+  res.json({ data, error });
 });
 
 // Archive wars
 app.get('/api/archive', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+  if (error) return res.status(500).json({ data: null, error });
 
-    const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
-    res.json({ data: filtered, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
+  const filtered = (data.items || []).filter((w) => w.opponent?.members?.length);
+  res.json({ data: filtered, error: null });
 });
 
 // War log stats
 app.get('/api/war-log-stats', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+  if (error) return res.status(500).json({ data: null, error });
 
-    const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
-    res.json({ data: filtered, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
-});
-
-// Current war
-app.get('/api/current-war', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
-
-    res.json({ data, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
+  const filtered = (data.items || []).filter((w) => w.opponent?.members?.length);
+  res.json({ data: filtered, error: null });
 });
 
 // CWL normalized
 app.get('/api/cwl', async (_req, res) => {
-  try {
-    const encodedTag = encodeURIComponent(CLAN_TAG);
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+  if (error) return res.status(500).json({ data: null, error });
 
-    const clans = [];
-    if (data.clan) clans.push({ ...data.clan, tag: data.clan.tag, name: data.clan.name, stars: data.clan.stars ?? 0 });
-    if (data.opponent) clans.push({ ...data.opponent, tag: data.opponent.tag, name: data.opponent.name, stars: data.opponent.stars ?? 0 });
+  const clans = [];
+  if (data.clan) clans.push({ ...data.clan, tag: data.clan.tag, name: data.clan.name, stars: data.clan.stars ?? 0 });
+  if (data.opponent) clans.push({ ...data.opponent, tag: data.opponent.tag, name: data.opponent.name, stars: data.opponent.stars ?? 0 });
 
-    res.json({ data: { clans, state: data.state ?? 'notInWar' }, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
+  res.json({ data: { clans, state: data.state ?? 'notInWar' }, error: null });
 });
 
 // Player performance history
 app.get('/api/player-performance/:playerTag', async (req, res) => {
+  const playerTag = `#${req.params.playerTag}`;
+  const clanEnc = encodeURIComponent(CLAN_TAG);
+
   try {
-    const playerTag = `#${req.params.playerTag}`;
-    const clanEnc = encodeURIComponent(CLAN_TAG);
     const { data: warLog, error } = await makeApiRequest(`/clans/${clanEnc}/warlog?limit=50`);
-    if (error || !warLog) throw new Error(error || 'No war log returned');
+    if (error) throw new Error(error);
 
     const warScores = [];
     for (const war of warLog.items || []) {
       if (war.state !== 'warEnded' || !war.clan?.members) continue;
-      const member = war.clan.members.find(m => m.tag === playerTag);
+      const member = war.clan.members.find((m) => m.tag === playerTag);
       if (!member?.attacks?.length) continue;
 
-      const opponentMap = new Map((war.opponent?.members || []).map(m => [m.tag, m]));
+      const opponentMap = new Map((war.opponent?.members || []).map((m) => [m.tag, m]));
       const teamSize = war.teamSize || 1;
       const thLevel = member.townhallLevel;
 
       const wps = member.attacks
-        .map(a => calculateAttackScore(a, thLevel, teamSize, opponentMap))
+        .map((a) => calculateAttackScore(a, thLevel, teamSize, opponentMap))
         .reduce((a, b) => a + b, 0);
       warScores.push(wps);
     }
