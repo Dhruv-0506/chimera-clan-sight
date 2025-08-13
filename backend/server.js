@@ -52,12 +52,20 @@ app.get('/api/player-roster', async (_req, res) => {
   res.json({ data: data.members ?? [], error: null });
 });
 
+// Alias route for existing frontend: /api/clan-info
+app.get('/api/clan-info', async (_req, res) => {
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+  if (error) return res.status(500).json({ data: null, error });
+  // Return in format frontend expects
+  res.json({ data: { memberList: data.members ?? [] }, error: null });
+});
+
 // Archive wars
 app.get('/api/archive', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
   if (error) return res.status(500).json({ data: null, error });
-  // filter out wars with missing opponent info
   const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
   res.json({ data: filtered, error: null });
 });
@@ -83,7 +91,6 @@ app.get('/api/cwl', async (_req, res) => {
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
   if (error) return res.status(500).json({ data: null, error });
 
-  // Normalize to frontend format: clans array
   const clans = [];
   if (data.clan) clans.push({ ...data.clan, tag: data.clan.tag, name: data.clan.name, stars: data.clan.stars ?? 0 });
   if (data.opponent) clans.push({ ...data.opponent, tag: data.opponent.tag, name: data.opponent.name, stars: data.opponent.stars ?? 0 });
