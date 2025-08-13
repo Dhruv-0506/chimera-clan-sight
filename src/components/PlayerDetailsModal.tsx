@@ -2,11 +2,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Chart from 'chart.js/auto';
-import { Home, Trophy, Star, Medal, Users, Shield, TrendingUp, Zap } from 'lucide-react';
+import { Home, Trophy, Star, Medal, Zap } from 'lucide-react';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
-/* ---------- helpers ---------- */
 const parseCoCTimeMs = (t) => {
   if (!t) return NaN;
   if (typeof t === 'number') return t;
@@ -77,7 +76,7 @@ export default function PlayerDetailsModal({ player, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
@@ -99,34 +98,19 @@ export default function PlayerDetailsModal({ player, onClose }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="stat-card glass-panel p-4 flex items-center gap-3">
             <Home size={24} className="text-blue-400"/>
-            <div>
-              <div className="text-xs uppercase tracking-wider">Town Hall</div>
-              <div className="text-xl font-bold">{player.townHallLevel ?? 0}</div>
-            </div>
+            <div><div className="text-xs uppercase tracking-wider">Town Hall</div><div className="text-xl font-bold">{player.townHallLevel ?? 0}</div></div>
           </div>
-
           <div className="stat-card glass-panel p-4 flex items-center gap-3">
             <Trophy size={24} className="text-yellow-400"/>
-            <div>
-              <div className="text-xs uppercase tracking-wider">Trophies</div>
-              <div className="text-xl font-bold">{player.trophies?.toLocaleString() ?? 0}</div>
-            </div>
+            <div><div className="text-xs uppercase tracking-wider">Trophies</div><div className="text-xl font-bold">{player.trophies?.toLocaleString() ?? 0}</div></div>
           </div>
-
           <div className="stat-card glass-panel p-4 flex items-center gap-3">
             <Star size={24} className="text-red-400"/>
-            <div>
-              <div className="text-xs uppercase tracking-wider">Avg War Score</div>
-              <div className="text-xl font-bold">{Math.round(avgScore)}</div>
-            </div>
+            <div><div className="text-xs uppercase tracking-wider">Avg War Score</div><div className="text-xl font-bold">{Math.round(avgScore)}</div></div>
           </div>
-
           <div className="stat-card glass-panel p-4 flex items-center gap-3">
             <Zap size={24} className="text-purple-400"/>
-            <div>
-              <div className="text-xs uppercase tracking-wider">Donations</div>
-              <div className="text-xl font-bold">{player.donations ?? 0}</div>
-            </div>
+            <div><div className="text-xs uppercase tracking-wider">Donations</div><div className="text-xl font-bold">{player.donations ?? 0}</div></div>
           </div>
         </div>
 
@@ -145,11 +129,11 @@ export default function PlayerDetailsModal({ player, onClose }) {
         {/* Extra summary */}
         {data?.warHistory?.length ? (
           <div className="glass-panel p-4">
-            <h3 className="text-lg font-semibold mb-2">Summary</h3>
-            <ul className="space-y-1 text-sm">
+            <h3 className="text-lg font-semibold mb-2">War Summary</h3>
+            <ul className="text-sm space-y-1">
               <li>Total wars: {data.warHistory.length}</li>
               <li>Latest score: {Math.round(data.warHistory[data.warHistory.length - 1]?.score ?? 0)}</li>
-              <li>Trend: <TrendingUp size={16} className="inline-block ml-1" /></li>
+              <li>Highest score: {Math.round(Math.max(...data.warHistory.map(h => h.score)))}</li>
             </ul>
           </div>
         ) : (
