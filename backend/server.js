@@ -25,70 +25,50 @@ const makeApiRequest = async (endpoint) => {
   }
 };
 
-/* ---------- War Score Helper ---------- */
-const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
-  const star_power = { 3: 207, 2: 89, 1: 32, 0: 0 }[attack.stars] || 0;
-  const destruction_factor = 1 + attack.destructionPercentage / 250;
-  const defender = opponent_map.get(attack.defenderTag);
-  if (!defender) return 0;
-  const defender_th = defender.townhallLevel || attacker_th;
-  const th_diff = attacker_th - defender_th;
-  const th_mod = Math.pow(1.6, -th_diff);
-  const map_rank = defender.mapPosition || team_size;
-  let map_mod = 1.0;
-  if (map_rank <= team_size / 3) map_mod = 1.15;
-  else if (map_rank > (team_size / 3) * 2) map_mod = 0.85;
-  const first_hit_bonus = attack.order === 1 ? (team_size - map_rank) * 0.5 : 0;
-  return star_power * destruction_factor * th_mod * map_mod + first_hit_bonus;
-};
-
 /* ---------- Routes ---------- */
 
-// Player Roster (frontend expects memberList)
+// Player roster for frontend
 app.get('/api/clan-info', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+  if (error) return res.status(500).json({ data: null, error });
 
-  try {
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-    if (error) return res.status(500).json({ data: null, error });
-
-    // Exact format frontend expects
-    res.json({ data: { memberList: data.members ?? [] }, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
+  // Wrap members array in memberList to match frontend expectations
+  res.json({
+    data: {
+      memberList: (data.members ?? []).map(m => ({
+        tag: m.tag,
+        name: m.name,
+        townhallLevel: m.townHallLevel,
+        role: m.role,
+        donations: m.donations ?? 0,
+        donationsReceived: m.donationsReceived ?? 0,
+        attackWins: m.attackWins ?? 0,
+        defenseWins: m.defenseWins ?? 0,
+      })),
+    },
+    error: null,
+  });
 });
 
-// Full player roster endpoint (optional for other uses)
+// Full clan roster (optional route)
 app.get('/api/player-roster', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+  if (error) return res.status(500).json({ data: null, error });
 
-  try {
-    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-    if (error) return res.status(500).json({ data: null, error });
+  const members = (data.members ?? []).map(m => ({
+    tag: m.tag,
+    name: m.name,
+    townhallLevel: m.townHallLevel,
+    role: m.role,
+    donations: m.donations ?? 0,
+    donationsReceived: m.donationsReceived ?? 0,
+    attackWins: m.attackWins ?? 0,
+    defenseWins: m.defenseWins ?? 0,
+  }));
 
-    const members = (data.members ?? []).map((m) => ({
-      tag: m.tag,
-      name: m.name,
-      townHallLevel: m.townHallLevel,
-      role: m.role,
-      donations: m.donations ?? 0,
-      donationsReceived: m.donationsReceived ?? 0,
-      attackWins: m.attackWins ?? 0,
-      defenseWins: m.defenseWins ?? 0,
-    }));
-
-    res.json({ data: members, error: null });
-  } catch (err) {
-    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
-  }
-});
-
-// Current War
-app.get('/api/current-war', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-  res.json({ data, error });
+  res.json({ data: members, error: null });
 });
 
 // Archive wars
@@ -96,8 +76,7 @@ app.get('/api/archive', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
   if (error) return res.status(500).json({ data: null, error });
-
-  const filtered = (data.items || []).filter((w) => w.opponent?.members?.length);
+  const filtered = (data.items ?? []).filter(w => w.opponent?.members?.length);
   res.json({ data: filtered, error: null });
 });
 
@@ -106,9 +85,15 @@ app.get('/api/war-log-stats', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
   if (error) return res.status(500).json({ data: null, error });
-
-  const filtered = (data.items || []).filter((w) => w.opponent?.members?.length);
+  const filtered = (data.items ?? []).filter(w => w.opponent?.members?.length);
   res.json({ data: filtered, error: null });
+});
+
+// Current War
+app.get('/api/current-war', async (_req, res) => {
+  const encodedTag = encodeURIComponent(CLAN_TAG);
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+  res.json({ data, error });
 });
 
 // CWL normalized
@@ -125,6 +110,22 @@ app.get('/api/cwl', async (_req, res) => {
 });
 
 // Player performance history
+const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
+  const star_power = { 3: 207, 2: 89, 1: 32, 0: 0 }[attack.stars] || 0;
+  const destruction_factor = 1 + attack.destructionPercentage / 250;
+  const defender = opponent_map.get(attack.defenderTag);
+  if (!defender) return 0;
+  const defender_th = defender.townhallLevel || attacker_th;
+  const th_diff = attacker_th - defender_th;
+  const th_mod = Math.pow(1.6, -th_diff);
+  const map_rank = defender.mapPosition || team_size;
+  let map_mod = 1.0;
+  if (map_rank <= team_size / 3) map_mod = 1.15;
+  else if (map_rank > (team_size / 3) * 2) map_mod = 0.85;
+  const first_hit_bonus = attack.order === 1 ? (team_size - map_rank) * 0.5 : 0;
+  return star_power * destruction_factor * th_mod * map_mod + first_hit_bonus;
+};
+
 app.get('/api/player-performance/:playerTag', async (req, res) => {
   const playerTag = `#${req.params.playerTag}`;
   const clanEnc = encodeURIComponent(CLAN_TAG);
@@ -134,17 +135,17 @@ app.get('/api/player-performance/:playerTag', async (req, res) => {
     if (error) throw new Error(error);
 
     const warScores = [];
-    for (const war of warLog.items || []) {
+    for (const war of warLog.items ?? []) {
       if (war.state !== 'warEnded' || !war.clan?.members) continue;
-      const member = war.clan.members.find((m) => m.tag === playerTag);
+      const member = war.clan.members.find(m => m.tag === playerTag);
       if (!member?.attacks?.length) continue;
 
-      const opponentMap = new Map((war.opponent?.members || []).map((m) => [m.tag, m]));
-      const teamSize = war.teamSize || 1;
+      const opponentMap = new Map((war.opponent?.members ?? []).map(m => [m.tag, m]));
+      const teamSize = war.teamSize ?? 1;
       const thLevel = member.townhallLevel;
 
       const wps = member.attacks
-        .map((a) => calculateAttackScore(a, thLevel, teamSize, opponentMap))
+        .map(a => calculateAttackScore(a, thLevel, teamSize, opponentMap))
         .reduce((a, b) => a + b, 0);
       warScores.push(wps);
     }
