@@ -6,7 +6,7 @@ import PlayerDetailsModal from '../components/PlayerDetailsModal';
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
 export default function PlayerRoster() {
-  const [roster, setRoster]   = useState([]);
+  const [roster, setRoster] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
