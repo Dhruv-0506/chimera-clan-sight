@@ -1,34 +1,37 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/CurrentWar.tsx
+import React, { useEffect, useMemo, useState } from 'react';
 import { Sword, Users, Trophy, Clock, ShieldAlert } from 'lucide-react';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
-const formatTimeRemaining = (endTime: string | number | Date | undefined | null) => {
-  if (!endTime) return 'N/A';
-
-  let endMs: number;
-  if (typeof endTime === 'number') endMs = endTime;
-  else if (typeof endTime === 'string') {
-    const parsed = Date.parse(endTime);
-    if (isNaN(parsed)) {
-      // fallback: if string can't be parsed, return original string to help debugging
-      return String(endTime);
+// Parse CoC time "YYYYMMDDThhmmss.000Z" -> ms since epoch
+const parseCoCTimeToMs = (t?: string | number | Date | null) => {
+  if (!t) return NaN;
+  if (typeof t === 'number') return t;
+  if (t instanceof Date) return t.getTime();
+  if (typeof t === 'string') {
+    // try native
+    const native = Date.parse(t);
+    if (!Number.isNaN(native)) return native;
+    // convert "20250820T164500.000Z" -> "2025-08-20T16:45:00Z"
+    const m = t.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.\d+)?Z$/);
+    if (m) {
+      const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+      const fixed = Date.parse(iso);
+      if (!Number.isNaN(fixed)) return fixed;
     }
-    endMs = parsed;
-  } else {
-    endMs = new Date(endTime).getTime();
+    return NaN;
   }
+  return NaN;
+};
 
-  const now = Date.now();
-  const distance = endMs - now;
-  if (distance <= 0) return 'War Ended';
-
-  const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  return `${hours}h ${minutes}m`;
+const formatDistance = (futureMs: number, nowMs: number) => {
+  const diff = futureMs - nowMs;
+  if (diff <= 0) return 'War Ended';
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
 };
 
 const processAttacks = (war: any) => {
@@ -47,7 +50,6 @@ const processAttacks = (war: any) => {
     }))
   );
 
-  // sort by order descending (most recent first)
   return allAttacks.sort((a: any, b: any) => (b.order ?? 0) - (a.order ?? 0));
 };
 
@@ -55,6 +57,7 @@ export default function CurrentWar() {
   const [warData, setWarData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const fetchWarData = async () => {
@@ -77,7 +80,21 @@ export default function CurrentWar() {
       }
     };
     fetchWarData();
+
+    // live countdown tick
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
   }, []);
+
+  const timeLeft = useMemo(() => {
+    if (!warData) return 'N/A';
+    const state = String(warData.state || '').toLowerCase(); // preparation | inwar | warended
+    const target = state === 'preparation'
+      ? parseCoCTimeToMs(warData.startTime)
+      : parseCoCTimeToMs(warData.endTime);
+    if (Number.isNaN(target)) return 'N/A';
+    return formatDistance(target, now);
+  }, [warData, now]);
 
   if (isLoading) {
     return (
@@ -127,7 +144,7 @@ export default function CurrentWar() {
               <Clock className="text-blue-400" size={24} />
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Time Left</span>
             </div>
-            <div className="text-2xl font-bold red-glow">{formatTimeRemaining(warData.endTime)}</div>
+            <div className="text-2xl font-bold red-glow">{timeLeft}</div>
           </div>
 
           <div className="glass-panel p-6">
@@ -147,8 +164,8 @@ export default function CurrentWar() {
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Destruction</span>
             </div>
             <div className="text-lg font-bold text-foreground">
-              <span className="text-primary-glow">{(Number(warData.clan?.destructionPercentage) ?? 0).toFixed(2)}%</span>
-              <span className="text-muted-foreground"> - {(Number(warData.opponent?.destructionPercentage) ?? 0).toFixed(2)}%</span>
+              <span className="text-primary-glow">{Number(warData.clan?.destructionPercentage || 0).toFixed(2)}%</span>
+              <span className="text-muted-foreground"> - {Number(warData.opponent?.destructionPercentage || 0).toFixed(2)}%</span>
             </div>
           </div>
         </div>
@@ -174,10 +191,7 @@ export default function CurrentWar() {
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-1">
                         {[0, 1, 2].map((i) => (
-                          <div
-                            key={i}
-                            className={`w-4 h-4 ${i < (attack.stars ?? 0) ? 'text-yellow-400 drop-shadow-glow' : 'text-muted-foreground/30'}`}
-                          >
+                          <div key={i} className={`w-4 h-4 ${i < (attack.stars ?? 0) ? 'text-yellow-400 drop-shadow-glow' : 'text-muted-foreground/30'}`}>
                             ⭐
                           </div>
                         ))}
