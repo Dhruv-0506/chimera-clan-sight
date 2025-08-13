@@ -33,7 +33,7 @@ export default function Archives() {
   useEffect(() => {
     const fetchArchiveData = async () => {
         // Define the API URL for production and local development
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const API_URL = 'https://chimera-clan-sight.onrender.com';
         try {
             const response = await fetch(`${API_URL}/api/war-log-stats`);
             const result = await response.json();
