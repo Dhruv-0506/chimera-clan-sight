@@ -50,8 +50,17 @@ app.get('/api/player-roster', async (_req, res) => {
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
   if (error) return res.status(500).json({ data: null, error });
 
-  // Clash API returns members under memberList
-  const members = data.memberList ?? [];
+  const members = (data.memberList ?? []).map(m => ({
+    tag: m.tag,
+    name: m.name,
+    townhallLevel: m.townHallLevel, // lowercase for frontend
+    role: m.role,
+    donations: m.donations ?? 0,
+    donationsReceived: m.donationsReceived ?? 0,
+    attackWins: m.attackWins ?? 0,
+    defenseWins: m.defenseWins ?? 0,
+  }));
+
   res.json({ data: members, error: null });
 });
 
