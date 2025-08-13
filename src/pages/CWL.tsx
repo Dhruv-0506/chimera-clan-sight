@@ -85,7 +85,7 @@ export default function CWL() {
   useEffect(() => {
     const fetchCwlPageData = async () => {
         // Define the API URL for production and local development
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const API_URL = process.env.REACT_APP_API_URL || 'https://chimera-clan-sight.onrender.com';
         try {
             const [groupResponse, warLogResponse] = await Promise.all([
                 fetch(`${API_URL}/api/cwl`),
