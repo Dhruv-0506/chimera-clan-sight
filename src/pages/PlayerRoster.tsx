@@ -1,7 +1,7 @@
 // src/pages/PlayerRoster.jsx
 import React, { useEffect, useState } from 'react';
 import { Users, ShieldAlert } from 'lucide-react';
-import { PlayerDetailsModal } from '../components/PlayerDetailsModal';
+import PlayerDetailsModal from '../components/PlayerDetailsModal';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
@@ -9,9 +9,8 @@ export default function PlayerRoster() {
   const [roster, setRoster]   = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [selected, setSelected] = useState(null);
 
-  /* ---------- fetch ---------- */
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/roster`)
       .then(r => r.json())
@@ -23,22 +22,8 @@ export default function PlayerRoster() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  /* ---------- render ---------- */
-  if (isLoading) return (
-    <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-      <h1 className="text-2xl font-bold">Loading Roster...</h1>
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-      <div className="glass-panel p-8 text-center">
-        <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48}/>
-        <h1 className="text-2xl font-bold">Roster Unavailable</h1>
-        <p className="text-muted-foreground">{error}</p>
-      </div>
-    </div>
-  );
+  if (isLoading) return <div className="min-h-screen pt-24 px-6 flex items-center justify-center"><h1 className="text-2xl font-bold">Loading Roster...</h1></div>;
+  if (error) return <div className="min-h-screen pt-24 px-6 flex items-center justify-center"><ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48}/><h1 className="text-2xl font-bold">Roster Unavailable</h1><p className="text-muted-foreground">{error}</p></div>;
 
   return (
     <>
@@ -75,7 +60,7 @@ export default function PlayerRoster() {
                       <td className="py-3 px-4">
                         <button
                           className="glass-panel-hover px-3 py-1 text-sm rounded"
-                          onClick={() => setSelectedPlayer({ tag: m.tag, name: m.name })}
+                          onClick={() => setSelected({ tag: m.tag, name: m.name })}
                         >
                           Details
                         </button>
@@ -89,11 +74,10 @@ export default function PlayerRoster() {
         </div>
       </div>
 
-      {/* MODAL */}
-      {selectedPlayer && (
+      {selected && (
         <PlayerDetailsModal
-          player={selectedPlayer}
-          onClose={() => setSelectedPlayer(null)}
+          player={selected}
+          onClose={() => setSelected(null)}
         />
       )}
     </>
