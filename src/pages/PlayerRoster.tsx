@@ -22,17 +22,28 @@ export default function PlayerRoster() {
     const fetchPlayers = async () => {
       try {
         const res = await fetch(`${API_URL}/api/clan-info`);
-        const json = await res.json();
+
+        // Check if response is JSON
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error('Backend did not return valid JSON. Response: ' + text);
+        }
+
         if (json.error) throw new Error(json.error);
 
         const members: Player[] = json.data?.memberList ?? [];
         setPlayers(members);
       } catch (err: any) {
         setError(err?.message || 'Failed to fetch player roster.');
+        setPlayers([]);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchPlayers();
   }, []);
 
