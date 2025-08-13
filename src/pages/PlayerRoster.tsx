@@ -1,82 +1,79 @@
-// src/pages/PlayerRoster.tsx
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { PlayerCard } from '@/components/PlayerCard';
-import { PlayerDetailsModal } from '@/components/PlayerDetailsModal';
+import React, { useEffect, useState } from 'react';
 
-const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
+const API_URL = 'https://chimera-clan-sight.onrender.com';
 
-const fetchRoster = async () => {
-  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 28000);
-
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`The backend server responded with status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    if (result.error) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  } catch (err: any) {
-    if (err && (err.name === 'AbortError' || err.code === 'ABORT_ERR')) {
-      throw new Error('Request to the backend timed out. Please try again.');
-    }
-    throw err;
-  }
-};
+interface Player {
+  tag: string;
+  name: string;
+  townhallLevel: number;
+  role: string;
+  donations: number;
+  donationsReceived: number;
+  attackWins: number;
+  defenseWins: number;
+}
 
 export default function PlayerRoster() {
-  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: players, isLoading, error } = useQuery({
-    queryKey: ['playerRoster'],
-    queryFn: fetchRoster,
-    retry: false,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false
-  });
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/clan-info`);
+        const json = await res.json();
+
+        if (json.error) throw new Error(json.error);
+
+        const members: Player[] = json.data?.memberList ?? [];
+        setPlayers(members);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlayers();
+  }, []);
+
+  if (isLoading) return <p>Loading Player Roster...</p>;
+  if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Player Roster</h1>
-          <p className="text-muted-foreground">Click on any player to view detailed performance analytics</p>
-        </div>
-
-        {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
-
-        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {(error as any).message}</div>}
-
-        {players && (
-          <div className="player-card-grid">
-            {players
-              .sort((a: any, b: any) => (b.averageWarScore ?? 0) - (a.averageWarScore ?? 0))
-              .map((player: any) => (
-                <PlayerCard
-                  key={player.tag}
-                  player={player}
-                  onClick={setSelectedPlayer}
-                />
-              ))}
-          </div>
-        )}
+        <h1 className="text-4xl font-bold mb-6">Player Roster</h1>
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="p-2 border">Name</th>
+              <th className="p-2 border">Tag</th>
+              <th className="p-2 border">TH</th>
+              <th className="p-2 border">Role</th>
+              <th className="p-2 border">Attack Wins</th>
+              <th className="p-2 border">Defense Wins</th>
+              <th className="p-2 border">Donations</th>
+              <th className="p-2 border">Donations Received</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((p) => (
+              <tr key={p.tag} className="even:bg-gray-50">
+                <td className="p-2 border">{p.name}</td>
+                <td className="p-2 border">{p.tag}</td>
+                <td className="p-2 border">{p.townhallLevel}</td>
+                <td className="p-2 border">{p.role}</td>
+                <td className="p-2 border">{p.attackWins}</td>
+                <td className="p-2 border">{p.defenseWins}</td>
+                <td className="p-2 border">{p.donations}</td>
+                <td className="p-2 border">{p.donationsReceived}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {selectedPlayer && (
-        <PlayerDetailsModal
-          player={selectedPlayer}
-          onClose={() => setSelectedPlayer(null)}
-        />
-      )}
     </div>
   );
 }
