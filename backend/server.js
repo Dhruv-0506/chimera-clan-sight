@@ -11,11 +11,13 @@ const CLAN_TAG = '#2G8LRGU2Q';
 
 app.use(cors());
 
+// Axios instance for Clash API
 const cocApi = axios.create({
   baseURL: 'https://api.clashofclans.com/v1',
   headers: { Authorization: `Bearer ${API_TOKEN}` },
 });
 
+// Helper to make API requests
 const makeApiRequest = async (endpoint) => {
   try {
     const { data } = await cocApi.get(endpoint);
@@ -44,95 +46,123 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
 
 /* ---------- Routes ---------- */
 
-// Full clan roster for frontend
+// Full clan roster
 app.get('/api/player-roster', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-  if (error) return res.status(500).json({ data: null, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
 
-  // Map API fields to frontend-friendly keys
-  const members = (data.members ?? []).map(m => ({
-    tag: m.tag,
-    name: m.name,
-    townhallLevel: m.townHallLevel, // lowercase for frontend
-    role: m.role,
-    donations: m.donations ?? 0,
-    donationsReceived: m.donationsReceived ?? 0,
-    attackWins: m.attackWins ?? 0,
-    defenseWins: m.defenseWins ?? 0,
-  }));
+    const members = Array.isArray(data.members)
+      ? data.members.map(m => ({
+          tag: m.tag,
+          name: m.name,
+          townhallLevel: m.townHallLevel,
+          role: m.role,
+          donations: m.donations ?? 0,
+          donationsReceived: m.donationsReceived ?? 0,
+          attackWins: m.attackWins ?? 0,
+          defenseWins: m.defenseWins ?? 0,
+        }))
+      : [];
 
-  res.json({ data: members, error: null });
+    res.json({ data: members, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
-// Alias route for frontend compatibility
+// Alias for frontend: /api/clan-info
 app.get('/api/clan-info', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
-  if (error) return res.status(500).json({ data: null, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
 
-  const memberList = (data.members ?? []).map(m => ({
-    tag: m.tag,
-    name: m.name,
-    townhallLevel: m.townHallLevel,
-    role: m.role,
-    donations: m.donations ?? 0,
-    donationsReceived: m.donationsReceived ?? 0,
-    attackWins: m.attackWins ?? 0,
-    defenseWins: m.defenseWins ?? 0,
-  }));
+    const memberList = Array.isArray(data.members)
+      ? data.members.map(m => ({
+          tag: m.tag,
+          name: m.name,
+          townhallLevel: m.townHallLevel,
+          role: m.role,
+          donations: m.donations ?? 0,
+          donationsReceived: m.donationsReceived ?? 0,
+          attackWins: m.attackWins ?? 0,
+          defenseWins: m.defenseWins ?? 0,
+        }))
+      : [];
 
-  res.json({ data: { memberList }, error: null });
+    res.json({ data: { memberList }, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
 // Archive wars
 app.get('/api/archive', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
-  if (error) return res.status(500).json({ data: null, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
 
-  const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
-  res.json({ data: filtered, error: null });
+    const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
+    res.json({ data: filtered, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
 // War log stats
 app.get('/api/war-log-stats', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
-  if (error) return res.status(500).json({ data: null, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
 
-  const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
-  res.json({ data: filtered, error: null });
+    const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
+    res.json({ data: filtered, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
-// Current War
+// Current war
 app.get('/api/current-war', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-  res.json({ data, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
+
+    res.json({ data, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
 // CWL normalized
 app.get('/api/cwl', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
-  if (error) return res.status(500).json({ data: null, error });
+  try {
+    const encodedTag = encodeURIComponent(CLAN_TAG);
+    const { data, error } = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+    if (error || !data) return res.status(500).json({ data: null, error: error || 'No data returned' });
 
-  const clans = [];
-  if (data.clan) clans.push({ ...data.clan, tag: data.clan.tag, name: data.clan.name, stars: data.clan.stars ?? 0 });
-  if (data.opponent) clans.push({ ...data.opponent, tag: data.opponent.tag, name: data.opponent.name, stars: data.opponent.stars ?? 0 });
+    const clans = [];
+    if (data.clan) clans.push({ ...data.clan, tag: data.clan.tag, name: data.clan.name, stars: data.clan.stars ?? 0 });
+    if (data.opponent) clans.push({ ...data.opponent, tag: data.opponent.tag, name: data.opponent.name, stars: data.opponent.stars ?? 0 });
 
-  res.json({ data: { clans, state: data.state ?? 'notInWar' }, error: null });
+    res.json({ data: { clans, state: data.state ?? 'notInWar' }, error: null });
+  } catch (err) {
+    res.status(500).json({ data: null, error: `Backend Error: ${err.message}` });
+  }
 });
 
 // Player performance history
 app.get('/api/player-performance/:playerTag', async (req, res) => {
-  const playerTag = `#${req.params.playerTag}`;
-  const clanEnc = encodeURIComponent(CLAN_TAG);
-
   try {
+    const playerTag = `#${req.params.playerTag}`;
+    const clanEnc = encodeURIComponent(CLAN_TAG);
     const { data: warLog, error } = await makeApiRequest(`/clans/${clanEnc}/warlog?limit=50`);
-    if (error) throw new Error(error);
+    if (error || !warLog) throw new Error(error || 'No war log returned');
 
     const warScores = [];
     for (const war of warLog.items || []) {
