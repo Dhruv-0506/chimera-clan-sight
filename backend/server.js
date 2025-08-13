@@ -54,6 +54,17 @@ app.get('/api/archive', async (_req, res) => {
   res.json({ data });
 });
 
+app.get('/api/war-log-stats', async (_req, res) => {
+  const encodedTag = CLAN_TAG.replace('#', '%23');
+  const result = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+  res.json(result);
+});
+
+app.get('/api/cwl', async (_req, res) => {
+  const encodedTag = CLAN_TAG.replace('#', '%23');
+  const result = await makeApiRequest(`/clans/${encodedTag}/currentwar`);
+  res.json(result);
+});
 
 
 app.get('/api/clan-info', async (_req, res) => {
