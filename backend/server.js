@@ -50,7 +50,8 @@ app.get('/api/player-roster', async (_req, res) => {
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
   if (error) return res.status(500).json({ data: null, error });
 
-  const members = (data.memberList ?? []).map(m => ({
+  // Map API fields to frontend-friendly keys
+  const members = (data.members ?? []).map(m => ({
     tag: m.tag,
     name: m.name,
     townhallLevel: m.townHallLevel, // lowercase for frontend
@@ -64,13 +65,24 @@ app.get('/api/player-roster', async (_req, res) => {
   res.json({ data: members, error: null });
 });
 
-// Alias route for existing frontend: /api/clan-info
+// Alias route for frontend compatibility
 app.get('/api/clan-info', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
   if (error) return res.status(500).json({ data: null, error });
-  // Return in format frontend expects
-  res.json({ data: { memberList: data.members ?? [] }, error: null });
+
+  const memberList = (data.members ?? []).map(m => ({
+    tag: m.tag,
+    name: m.name,
+    townhallLevel: m.townHallLevel,
+    role: m.role,
+    donations: m.donations ?? 0,
+    donationsReceived: m.donationsReceived ?? 0,
+    attackWins: m.attackWins ?? 0,
+    defenseWins: m.defenseWins ?? 0,
+  }));
+
+  res.json({ data: { memberList }, error: null });
 });
 
 // Archive wars
@@ -78,14 +90,17 @@ app.get('/api/archive', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
   if (error) return res.status(500).json({ data: null, error });
+
   const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
   res.json({ data: filtered, error: null });
 });
 
+// War log stats
 app.get('/api/war-log-stats', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
   if (error) return res.status(500).json({ data: null, error });
+
   const filtered = (data.items || []).filter(w => w.opponent?.members?.length);
   res.json({ data: filtered, error: null });
 });
