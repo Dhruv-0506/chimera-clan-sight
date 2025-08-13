@@ -1,6 +1,8 @@
+// src/pages/PlayerRoster.tsx
 import React, { useEffect, useState } from 'react';
 
-const API_URL = 'https://chimera-clan-sight.onrender.com';
+// Use environment variable for backend URL (fallback to localhost)
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 interface Player {
   tag: string;
@@ -23,18 +25,18 @@ export default function PlayerRoster() {
       try {
         const res = await fetch(`${API_URL}/api/clan-info`);
 
-        // Check if response is JSON
-        const text = await res.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch {
-          throw new Error('Backend did not return valid JSON. Response: ' + text);
+        // If backend responds with non-200, throw error
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Backend Error ${res.status}: ${text}`);
         }
 
-        if (json.error) throw new Error(json.error);
+        const json = await res.json();
 
-        const members: Player[] = json.data?.memberList ?? [];
+        if (json.error) throw new Error(json.error || 'Unknown backend error');
+
+        // Ensure memberList exists
+        const members: Player[] = Array.isArray(json.data?.memberList) ? json.data.memberList : [];
         setPlayers(members);
       } catch (err: any) {
         setError(err?.message || 'Failed to fetch player roster.');
@@ -65,34 +67,38 @@ export default function PlayerRoster() {
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold mb-6">Player Roster</h1>
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Tag</th>
-              <th className="p-2 border">TH</th>
-              <th className="p-2 border">Role</th>
-              <th className="p-2 border">Attack Wins</th>
-              <th className="p-2 border">Defense Wins</th>
-              <th className="p-2 border">Donations</th>
-              <th className="p-2 border">Donations Received</th>
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((p) => (
-              <tr key={p.tag} className="even:bg-gray-50">
-                <td className="p-2 border">{p.name}</td>
-                <td className="p-2 border">{p.tag}</td>
-                <td className="p-2 border">{p.townhallLevel}</td>
-                <td className="p-2 border">{p.role}</td>
-                <td className="p-2 border">{p.attackWins}</td>
-                <td className="p-2 border">{p.defenseWins}</td>
-                <td className="p-2 border">{p.donations}</td>
-                <td className="p-2 border">{p.donationsReceived}</td>
+        {players.length === 0 ? (
+          <p>No players found.</p>
+        ) : (
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 border">Name</th>
+                <th className="p-2 border">Tag</th>
+                <th className="p-2 border">TH</th>
+                <th className="p-2 border">Role</th>
+                <th className="p-2 border">Attack Wins</th>
+                <th className="p-2 border">Defense Wins</th>
+                <th className="p-2 border">Donations</th>
+                <th className="p-2 border">Donations Received</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {players.map((p) => (
+                <tr key={p.tag} className="even:bg-gray-50">
+                  <td className="p-2 border">{p.name}</td>
+                  <td className="p-2 border">{p.tag}</td>
+                  <td className="p-2 border">{p.townhallLevel}</td>
+                  <td className="p-2 border">{p.role}</td>
+                  <td className="p-2 border">{p.attackWins}</td>
+                  <td className="p-2 border">{p.defenseWins}</td>
+                  <td className="p-2 border">{p.donations}</td>
+                  <td className="p-2 border">{p.donationsReceived}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
