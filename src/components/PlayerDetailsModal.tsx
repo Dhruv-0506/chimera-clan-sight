@@ -1,68 +1,55 @@
+// src/components/PlayerDetailsModal.jsx
 import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Chart from 'chart.js/auto';
-import { Home, Trophy, Star } from 'lucide-react';
+import { Home, Trophy, Star, Medal, Users, Shield, TrendingUp, Zap } from 'lucide-react';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
-// Define clear types for your data
-type WarHistoryItem = {
-  war: string;
-  score: number;
+/* ---------- helpers ---------- */
+const parseCoCTimeMs = (t) => {
+  if (!t) return NaN;
+  if (typeof t === 'number') return t;
+  if (t instanceof Date) return t.getTime();
+  if (typeof t === 'string') {
+    const m = t.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.\d+)?Z$/);
+    if (m) return Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
+    return Date.parse(t);
+  }
+  return NaN;
 };
 
-type PlayerPerformanceData = {
-  averageWarScore: number;
-  warHistory: WarHistoryItem[];
-};
-
-// Async function to fetch player data
-const fetchPlayerPerformance = async (playerTag: string): Promise<PlayerPerformanceData> => {
-  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
+const fetchPlayerPerformance = async (playerTag) => {
   const tag = playerTag.replace('#', '');
   const res = await fetch(`${BACKEND_URL}/api/player-performance/${tag}`);
-  if (!res.ok) throw new Error('Network response was not ok');
-  const result = await res.json();
-  if (result.error) throw new Error(result.error);
-  return result.data;
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json.data;
 };
 
-// Define props for the component
-interface PlayerDetailsModalProps {
-  player: any; // Consider defining a stricter type for the player object
-  onClose: () => void;
-}
+export default function PlayerDetailsModal({ player, onClose }) {
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
 
-export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ player, onClose }) => {
-  const chartRef = useRef<HTMLCanvasElement | null>(null);
-  const chartInstance = useRef<Chart | null>(null);
-
-  const { data: performanceData, isLoading, error } = useQuery<PlayerPerformanceData>({
-    queryKey: ['playerPerformance', player.tag],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['playerPerformance', player?.tag],
     queryFn: () => fetchPlayerPerformance(player.tag),
-    enabled: !!player?.tag, // Only run query if player tag exists
+    enabled: !!player?.tag,
     retry: false,
   });
 
   useEffect(() => {
-    if (!chartRef.current || !performanceData?.warHistory) {
-      return;
-    }
+    if (!chartRef.current || !data?.warHistory) return;
+    if (chartInstance.current) chartInstance.current.destroy();
 
-    // Destroy the previous chart instance before creating a new one
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-    // Create the new line chart
     chartInstance.current = new Chart(chartRef.current, {
       type: 'line',
       data: {
-        labels: performanceData.warHistory.map(h => h.war),
+        labels: data.warHistory.map(h => h.war),
         datasets: [
           {
             label: 'War Score',
-            data: performanceData.warHistory.map(h => h.score),
+            data: data.warHistory.map(h => h.score),
             borderColor: '#C62828',
             backgroundColor: 'rgba(198, 40, 40, 0.2)',
             fill: true,
@@ -74,80 +61,101 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ player, 
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { maxRotation: 45, minRotation: 0, color: '#A1A1AA' } },
+          x: { ticks: { maxRotation: 45, color: '#A1A1AA' } },
           y: { beginAtZero: true, ticks: { color: '#A1A1AA' } },
         },
-        plugins: {
-          legend: {
-            labels: {
-              color: '#FFFFFF'
-            }
-          }
-        }
+        plugins: { legend: { labels: { color: '#FFFFFF' } } },
       },
     });
 
-    // Cleanup function to destroy chart on component unmount
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-        chartInstance.current = null;
-      }
-    };
-  }, [performanceData]);
+    return () => chartInstance.current?.destroy();
+  }, [data]);
 
-  const avgScore = performanceData?.averageWarScore ?? 0;
+  if (!player) return null;
+
+  const avgScore = data?.averageWarScore ?? 0;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="glass-panel p-6 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <h2>{player?.name ?? 'Unknown Player'}</h2>
-            <p>
-              {player?.role?.replace('coLeader', 'Co-Leader')?.replace('admin', 'Elder') ?? 'Member'} - TH{player?.townHallLevel ?? 0}
+            <h2 className="text-2xl font-bold">{player.name}</h2>
+            <p className="text-muted-foreground">
+              {player.role?.replace('coLeader', 'Co-Leader')?.replace('admin', 'Elder') ?? 'Member'} - TH{player.townHallLevel ?? 0}
             </p>
           </div>
-          <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
+          <button className="text-2xl font-bold" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="modal-body">
-          <div className="modal-profile">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <Home />
-                <div>
-                  <div className="stat-label">Town Hall</div>
-                  <div className="stat-value">{player?.townHallLevel ?? 0}</div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <Trophy />
-                <div>
-                  <div className="stat-label">Trophies</div>
-                  <div className="stat-value">{player?.trophies ?? 0}</div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <Star />
-                <div>
-                  <div className="stat-label">Avg War Score</div>
-                  <div className="stat-value red-glow">{Math.round(avgScore)}</div>
-                </div>
-              </div>
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="stat-card glass-panel p-4 flex items-center gap-3">
+            <Home size={24} className="text-blue-400"/>
+            <div>
+              <div className="text-xs uppercase tracking-wider">Town Hall</div>
+              <div className="text-xl font-bold">{player.townHallLevel ?? 0}</div>
             </div>
           </div>
 
-          <div className="modal-graph">
-            <h3>War Performance Over Time</h3>
-            {isLoading && <p>Loading graph...</p>}
-            {error && <p className="text-red-400">Could not load graph data.</p>}
-            <div className="chart-container">
+          <div className="stat-card glass-panel p-4 flex items-center gap-3">
+            <Trophy size={24} className="text-yellow-400"/>
+            <div>
+              <div className="text-xs uppercase tracking-wider">Trophies</div>
+              <div className="text-xl font-bold">{player.trophies?.toLocaleString() ?? 0}</div>
+            </div>
+          </div>
+
+          <div className="stat-card glass-panel p-4 flex items-center gap-3">
+            <Star size={24} className="text-red-400"/>
+            <div>
+              <div className="text-xs uppercase tracking-wider">Avg War Score</div>
+              <div className="text-xl font-bold">{Math.round(avgScore)}</div>
+            </div>
+          </div>
+
+          <div className="stat-card glass-panel p-4 flex items-center gap-3">
+            <Zap size={24} className="text-purple-400"/>
+            <div>
+              <div className="text-xs uppercase tracking-wider">Donations</div>
+              <div className="text-xl font-bold">{player.donations ?? 0}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-2">War Performance Over Time</h3>
+          {isLoading && <p>Loading graph...</p>}
+          {error && <p className="text-red-400">{error}</p>}
+          {!isLoading && !error && (
+            <div className="h-60">
               <canvas ref={chartRef}></canvas>
             </div>
-          </div>
+          )}
         </div>
+
+        {/* Extra summary */}
+        {data?.warHistory?.length ? (
+          <div className="glass-panel p-4">
+            <h3 className="text-lg font-semibold mb-2">Summary</h3>
+            <ul className="space-y-1 text-sm">
+              <li>Total wars: {data.warHistory.length}</li>
+              <li>Latest score: {Math.round(data.warHistory[data.warHistory.length - 1]?.score ?? 0)}</li>
+              <li>Trend: <TrendingUp size={16} className="inline-block ml-1" /></li>
+            </ul>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center">No war history yet.</p>
+        )}
       </div>
     </div>
   );
-};
+}
