@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Search, Filter, ShieldAlert } from 'lucide-react';
 
 /* ---------- helpers ---------- */
-const formatDate = (endTimeString?: string | number) => {
+const formatDate = (endTimeString) => {
   if (!endTimeString) return 'N/A';
   const ts = typeof endTimeString === 'string' ? endTimeString.replace(/"/g, '') : String(endTimeString);
   const d = new Date(ts);
