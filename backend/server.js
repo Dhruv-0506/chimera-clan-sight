@@ -49,7 +49,10 @@ app.get('/api/player-roster', async (_req, res) => {
   const encodedTag = encodeURIComponent(CLAN_TAG);
   const { data, error } = await makeApiRequest(`/clans/${encodedTag}`);
   if (error) return res.status(500).json({ data: null, error });
-  res.json({ data: data.members ?? [], error: null });
+
+  // Clash API returns members under memberList
+  const members = data.memberList ?? [];
+  res.json({ data: members, error: null });
 });
 
 // Alias route for existing frontend: /api/clan-info
