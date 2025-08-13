@@ -47,6 +47,14 @@ const calculateAttackScore = (attack, attacker_th, team_size, opponent_map) => {
 /* ---------------------------------- */
 /*  Routes                            */
 /* ---------------------------------- */
+app.get('/api/archive', async (_req, res) => {
+  const encodedTag = CLAN_TAG.replace('#', '%23');
+  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/warlog?limit=50`);
+  if (error) return res.status(500).json({ data: null, error });
+  res.json({ data });
+});
+
+
 
 app.get('/api/clan-info', async (_req, res) => {
   const result = await makeApiRequest(`/clans/${encodeURIComponent(CLAN_TAG)}`);
