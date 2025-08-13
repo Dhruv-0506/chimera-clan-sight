@@ -21,9 +21,8 @@ export default function PlayerRoster() {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/clan-info`);
+        const res = await fetch(`${API_URL}/api/clan-info`, { cache: 'no-store' });
         const text = await res.text();
-
         let json;
         try {
           json = JSON.parse(text);
@@ -33,19 +32,17 @@ export default function PlayerRoster() {
 
         if (json.error) throw new Error(json.error);
 
-        // Map backend data safely to Player[]
+        // Map API members to frontend Player type
         const members: Player[] = (json.data?.memberList ?? []).map((m: any) => ({
           tag: m.tag,
           name: m.name,
-          townhallLevel: m.townhallLevel ?? m.townHallLevel ?? 0,
-          role: m.role ?? '',
+          townhallLevel: m.townHallLevel ?? m.townhallLevel ?? 0,
+          role: m.role,
           donations: m.donations ?? 0,
           donationsReceived: m.donationsReceived ?? 0,
           attackWins: m.attackWins ?? 0,
           defenseWins: m.defenseWins ?? 0,
         }));
-
-        if (members.length === 0) throw new Error('No players found.');
 
         setPlayers(members);
       } catch (err: any) {
