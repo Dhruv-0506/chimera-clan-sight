@@ -1,107 +1,79 @@
+// src/pages/PlayerRoster.jsx
 import React, { useEffect, useState } from 'react';
+import { Users, ShieldAlert } from 'lucide-react';
 
-const API_URL = 'https://chimera-clan-sight.onrender.com';
-
-interface Player {
-  tag: string;
-  name: string;
-  townhallLevel: number;
-  role: string;
-  donations: number;
-  donationsReceived: number;
-  attackWins: number;
-  defenseWins: number;
-}
+const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
 export default function PlayerRoster() {
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [roster, setRoster]   = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/clan-info`, { cache: 'no-store' });
-        const text = await res.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch {
-          throw new Error('Backend did not return valid JSON. Response: ' + text);
-        }
-
+    fetch(`${BACKEND_URL}/api/roster`)
+      .then(res => res.json())
+      .then(json => {
         if (json.error) throw new Error(json.error);
-
-        // Map API members to frontend Player type
-        const members: Player[] = (json.data?.memberList ?? []).map((m: any) => ({
-          tag: m.tag,
-          name: m.name,
-          townhallLevel: m.townHallLevel ?? m.townhallLevel ?? 0,
-          role: m.role,
-          donations: m.donations ?? 0,
-          donationsReceived: m.donationsReceived ?? 0,
-          attackWins: m.attackWins ?? 0,
-          defenseWins: m.defenseWins ?? 0,
-        }));
-
-        setPlayers(members);
-      } catch (err: any) {
-        setError(err?.message || 'Failed to fetch player roster.');
-        setPlayers([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPlayers();
+        setRoster(json.data ?? []);
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setIsLoading(false));
   }, []);
 
   if (isLoading)
     return (
       <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-        <p>Loading Player Roster...</p>
+        <h1 className="text-2xl font-bold">Loading Roster...</h1>
       </div>
     );
 
   if (error)
     return (
       <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+        <div className="glass-panel p-8 text-center">
+          <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
+          <h1 className="text-2xl font-bold">Roster Unavailable</h1>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
       </div>
     );
 
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6">Player Roster</h1>
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Tag</th>
-              <th className="p-2 border">TH</th>
-              <th className="p-2 border">Role</th>
-              <th className="p-2 border">Attack Wins</th>
-              <th className="p-2 border">Defense Wins</th>
-              <th className="p-2 border">Donations</th>
-              <th className="p-2 border">Donations Received</th>
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((p) => (
-              <tr key={p.tag} className="even:bg-gray-50">
-                <td className="p-2 border">{p.name}</td>
-                <td className="p-2 border">{p.tag}</td>
-                <td className="p-2 border">{p.townhallLevel}</td>
-                <td className="p-2 border">{p.role}</td>
-                <td className="p-2 border">{p.attackWins}</td>
-                <td className="p-2 border">{p.defenseWins}</td>
-                <td className="p-2 border">{p.donations}</td>
-                <td className="p-2 border">{p.donationsReceived}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Clan Roster</h1>
+          <p className="text-muted-foreground">Full member list & basic stats</p>
+        </div>
+
+        <div className="glass-panel p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-glass-border">
+                  <th className="text-left py-3 px-4 text-primary-glow">Name</th>
+                  <th className="text-left py-3 px-4 text-primary-glow">Role</th>
+                  <th className="text-left py-3 px-4 text-primary-glow">TH</th>
+                  <th className="text-left py-3 px-4 text-primary-glow">Trophies</th>
+                  <th className="text-left py-3 px-4 text-primary-glow">Donated</th>
+                  <th className="text-left py-3 px-4 text-primary-glow">Received</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((m) => (
+                  <tr key={m.tag} className="border-b border-glass-border hover:bg-glass-hover">
+                    <td className="py-3 px-4 font-medium">{m.name}</td>
+                    <td className="py-3 px-4">{m.role}</td>
+                    <td className="py-3 px-4">{m.townHall}</td>
+                    <td className="py-3 px-4">{m.trophies.toLocaleString()}</td>
+                    <td className="py-3 px-4">{m.donations.toLocaleString()}</td>
+                    <td className="py-3 px-4">{m.received.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
