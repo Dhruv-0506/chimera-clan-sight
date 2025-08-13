@@ -11,7 +11,7 @@ const CLAN_TAG  = '#2G8LRGU2Q';
 
 app.use(cors());
 
-/* ---------- helper: safe CoC fetch ---------- */
+/* ---------- helper ---------- */
 const cocApi = axios.create({
   baseURL: 'https://api.clashofclans.com/v1',
   headers: { Authorization: `Bearer ${API_TOKEN}` }
@@ -45,7 +45,7 @@ app.get('/api/war-log-stats', async (_req, res) => {
   res.json(result);
 });
 
-// 4. player performance (single player)
+// 4. single-player performance
 app.get('/api/player-performance/:playerTag', async (req, res) => {
   const playerTag = `#${req.params.playerTag}`;
   const clanEnc   = encodeURIComponent(CLAN_TAG);
@@ -71,11 +71,12 @@ app.get('/api/player-performance/:playerTag', async (req, res) => {
         const destructionFactor = 1 + (atk.destructionPercentage / 250);
         const defender = opponentMap.get(atk.defenderTag);
         if (!defender) return sum;
+
         const thDiff = thLevel - (defender.townhallLevel || thLevel);
         const thMod  = Math.pow(1.6, -thDiff);
         const rank   = defender.mapPosition || teamSize;
         let mapMod   = 1.0;
-        if (rank <= teamSize / 3) mapMod = 1.15;
+        if (rank <= teamSize / 3)       mapMod = 1.15;
         else if (rank > (teamSize / 3) * 2) mapMod = 0.85;
         const firstHit = atk.order === 1 ? (teamSize - rank) * 0.5 : 0;
         return sum + (starPower * destructionFactor * thMod * mapMod) + firstHit;
@@ -92,10 +93,9 @@ app.get('/api/player-performance/:playerTag', async (req, res) => {
   }
 });
 
-// 5. clan roster (full member list)
+// 5. roster with score column
 app.get('/api/roster', async (_req, res) => {
-  const encodedTag = encodeURIComponent(CLAN_TAG);
-  const { data, error } = await makeApiRequest(`/clans/${encodedTag}/members`);
+  const { data, error } = await makeApiRequest(`/clans/${encodeURIComponent(CLAN_TAG)}/members`);
   if (error) return res.status(500).json({ data: null, error });
 
   const roster = (data?.items || []).map(m => ({
@@ -105,10 +105,10 @@ app.get('/api/roster', async (_req, res) => {
     townHall: m.townHallLevel ?? 0,
     trophies: m.trophies ?? 0,
     donations: m.donations ?? 0,
-    received: m.donationsReceived ?? 0
+    received: m.donationsReceived ?? 0,
+    score: Math.floor(Math.random() * 1000 + 500) // placeholder
   }));
   res.json({ data: roster, error: null });
 });
 
-/* ---------- start ---------- */
 app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
