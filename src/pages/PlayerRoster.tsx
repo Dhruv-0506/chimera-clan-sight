@@ -1,3 +1,4 @@
+// src/pages/PlayerRoster.tsx
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PlayerCard } from '@/components/PlayerCard';
@@ -38,7 +39,9 @@ export default function PlayerRoster() {
   const { data: players, isLoading, error } = useQuery({
     queryKey: ['playerRoster'],
     queryFn: fetchRoster,
-    retry: false
+    retry: false,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false
   });
 
   return (
@@ -55,13 +58,15 @@ export default function PlayerRoster() {
 
         {players && (
           <div className="player-card-grid">
-            {players.sort((a: any, b: any) => (b.averageWarScore ?? 0) - (a.averageWarScore ?? 0)).map((player: any) => (
-              <PlayerCard
-                key={player.tag}
-                player={player}
-                onClick={setSelectedPlayer}
-              />
-            ))}
+            {players
+              .sort((a: any, b: any) => (b.averageWarScore ?? 0) - (a.averageWarScore ?? 0))
+              .map((player: any) => (
+                <PlayerCard
+                  key={player.tag}
+                  player={player}
+                  onClick={setSelectedPlayer}
+                />
+              ))}
           </div>
         )}
       </div>
