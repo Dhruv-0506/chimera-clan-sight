@@ -8,8 +8,9 @@ const formatDate = (endTimeString) => {
   const ts = typeof endTimeString === 'string' ? endTimeString.replace(/"/g, '') : String(endTimeString);
   const d = new Date(ts);
   return isNaN(d.getTime()) ? 'N/A' : d.toISOString().split('T')[0];
+};
 
-const processWarList = (wars: any[]) =>
+const processWarList = (wars) =>
   wars.map((war, idx) => ({
     id: war.warTag ?? idx,
     date: formatDate(war.endTime),
@@ -21,6 +22,7 @@ const processWarList = (wars: any[]) =>
     destruction: `${(war.clan?.destructionPercentage ?? 0).toFixed(1)}% - ${(war.opponent?.destructionPercentage ?? 0).toFixed(1)}%`,
     duration: '24h'
   }));
+
 
 /* ---------- component ---------- */
 export default function Archives() {
