@@ -1,10 +1,10 @@
-// src/pages/Archives.jsx  (or .tsx if you use TS)
+// src/pages/Archives.jsx
 import React, { useState, useEffect } from 'react';
 import { Calendar, Search, Filter, ShieldAlert } from 'lucide-react';
 
 /* ---------- helpers ---------- */
-const formatDate = (endTimeString?: string) =>
-  endTimeString ? new Date(endTimeString).toISOString().split('T')[0] : 'N/A';
+const formatDate = (endTime?: string) =>
+  endTime ? new Date(endTime).toISOString().split('T')[0] : 'N/A';
 
 const processWarList = (wars: any[]) =>
   wars.map((war, idx) => ({
@@ -21,10 +21,10 @@ const processWarList = (wars: any[]) =>
 
 /* ---------- component ---------- */
 export default function Archives() {
-  const [stats, setStats] = useState<any>(null);
-  const [wars, setWars]   = useState<any[]>([]);
+  const [stats, setStats]   = useState<any>(null);
+  const [wars, setWars]     = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]   = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const API_URL = 'https://chimera-clan-sight.onrender.com';
@@ -34,14 +34,22 @@ export default function Archives() {
       try {
         const res   = await fetch(`${API_URL}/api/war-log-stats`);
         const json  = await res.json();
-
         if (json.error) throw new Error(json.error);
 
-        const regular = json.data?.regular;
-        if (!regular) throw new Error('No regular war data');
+        /* raw CoC war list */
+        const rawWars = json.data?.items ?? json.data ?? [];
+        const totalWars   = rawWars.length;
+        const wins        = rawWars.filter(w => w.result === 'win').length;
+        const totalStars  = rawWars.reduce((s, w) => s + (w.clan?.stars ?? 0), 0);
+        const totalDest   = rawWars.reduce((d, w) => d + (w.clan?.destructionPercentage ?? 0), 0);
 
-        setStats(regular.stats);
-        setWars(processWarList(regular.wars));
+        setStats({
+          totalWars,
+          winRate: totalWars ? Math.round((wins / totalWars) * 100) : 0,
+          avgStars: totalWars ? (totalStars / totalWars).toFixed(1) : 0,
+          avgDestruction: totalWars ? (totalDest / totalWars).toFixed(1) : 0
+        });
+        setWars(processWarList(rawWars));
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -71,7 +79,7 @@ export default function Archives() {
         <div className="glass-panel p-8 text-center">
           <ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48} />
           <h1 className="text-2xl font-bold">Archives Unavailable</h1>
-          <p className="text-muted-foreground">{error ?? 'Could not retrieve war log.'}</p>
+          <p className="text-muted-foreground">{error ?? 'No war data to display.'}</p>
         </div>
       </div>
     );
@@ -89,25 +97,25 @@ export default function Archives() {
           <div className="glass-panel p-6">
             <Calendar className="text-blue-400 mb-2" size={24} />
             <div className="text-xs uppercase tracking-wide">Total Wars</div>
-            <div className="text-2xl font-bold">{stats.totalWars ?? 0}</div>
+            <div className="text-2xl font-bold">{stats.totalWars}</div>
           </div>
 
           <div className="glass-panel p-6">
             <div className="text-green-400 mb-2">●</div>
             <div className="text-xs uppercase tracking-wide">Win Rate</div>
-            <div className="text-2xl font-bold">{stats.winRate ?? 0}%</div>
+            <div className="text-2xl font-bold">{stats.winRate}%</div>
           </div>
 
           <div className="glass-panel p-6">
             <div className="text-yellow-400 mb-2">⭐</div>
             <div className="text-xs uppercase tracking-wide">Avg Stars</div>
-            <div className="text-2xl font-bold">{stats.avgStars ?? 0}</div>
+            <div className="text-2xl font-bold">{stats.avgStars}</div>
           </div>
 
           <div className="glass-panel p-6">
             <div className="text-primary-glow mb-2">%</div>
             <div className="text-xs uppercase tracking-wide">Avg Destruction</div>
-            <div className="text-2xl font-bold">{stats.avgDestruction ?? 0}%</div>
+            <div className="text-2xl font-bold">{stats.avgDestruction}%</div>
           </div>
         </div>
 
