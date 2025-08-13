@@ -23,23 +23,32 @@ export default function PlayerRoster() {
       try {
         const res = await fetch(`${API_URL}/api/clan-info`);
         const json = await res.json();
-
         if (json.error) throw new Error(json.error);
 
         const members: Player[] = json.data?.memberList ?? [];
         setPlayers(members);
       } catch (err: any) {
-        setError(err.message);
+        setError(err?.message || 'Failed to fetch player roster.');
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchPlayers();
   }, []);
 
-  if (isLoading) return <p>Loading Player Roster...</p>;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (isLoading)
+    return (
+      <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+        <p>Loading Player Roster...</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
 
   return (
     <div className="min-h-screen pt-24 px-6">
