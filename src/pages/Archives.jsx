@@ -5,7 +5,9 @@ import { Calendar, Search, Filter, ShieldAlert } from 'lucide-react';
 /* ---------- helpers ---------- */
 const formatDate = (endTimeString) => {
   if (!endTimeString) return 'N/A';
-  const ts = typeof endTimeString === 'string' ? endTimeString.replace(/"/g, '') : String(endTimeString);
+  const ts = typeof endTimeString === 'string'
+    ? endTimeString.replace(/"/g, '')
+    : String(endTimeString);
   const d = new Date(ts);
   return isNaN(d.getTime()) ? 'N/A' : d.toISOString().split('T')[0];
 };
@@ -23,13 +25,12 @@ const processWarList = (wars) =>
     duration: '24h'
   }));
 
-
 /* ---------- component ---------- */
 export default function Archives() {
-  const [stats, setStats]   = useState<any>(null);
-  const [wars, setWars]     = useState<any[]>([]);
+  const [stats, setStats] = useState(null);
+  const [wars, setWars] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const API_URL = 'https://chimera-clan-sight.onrender.com';
@@ -37,16 +38,16 @@ export default function Archives() {
   useEffect(() => {
     const fetchArchiveData = async () => {
       try {
-        const res   = await fetch(`${API_URL}/api/war-log-stats`);
-        const json  = await res.json();
+        const res = await fetch(`${API_URL}/api/war-log-stats`);
+        const json = await res.json();
         if (json.error) throw new Error(json.error);
 
         /* raw CoC war list */
         const rawWars = json.data?.items ?? json.data ?? [];
-        const totalWars   = rawWars.length;
-        const wins        = rawWars.filter(w => w.result === 'win').length;
-        const totalStars  = rawWars.reduce((s, w) => s + (w.clan?.stars ?? 0), 0);
-        const totalDest   = rawWars.reduce((d, w) => d + (w.clan?.destructionPercentage ?? 0), 0);
+        const totalWars = rawWars.length;
+        const wins = rawWars.filter(w => w.result === 'win').length;
+        const totalStars = rawWars.reduce((s, w) => s + (w.clan?.stars ?? 0), 0);
+        const totalDest = rawWars.reduce((d, w) => d + (w.clan?.destructionPercentage ?? 0), 0);
 
         setStats({
           totalWars,
@@ -55,7 +56,7 @@ export default function Archives() {
           avgDestruction: totalWars ? (totalDest / totalWars).toFixed(1) : 0
         });
         setWars(processWarList(rawWars));
-      } catch (err: any) {
+      } catch (err) {
         setError(err.message);
       } finally {
         setIsLoading(false);
@@ -65,10 +66,10 @@ export default function Archives() {
   }, []);
 
   const filteredWars = wars.filter(w =>
-    war.opponent.toLowerCase().includes(searchTerm.toLowerCase())
+    w.opponent.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
         <div className="text-center">
@@ -77,8 +78,9 @@ export default function Archives() {
         </div>
       </div>
     );
+  }
 
-  if (error || !stats)
+  if (error || !stats) {
     return (
       <div className="min-h-screen pt-24 px-6 flex items-center justify-center">
         <div className="glass-panel p-8 text-center">
@@ -88,6 +90,7 @@ export default function Archives() {
         </div>
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen pt-24 px-6">
@@ -167,7 +170,9 @@ export default function Archives() {
                     <td className="py-3 px-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          war.result === 'Win' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                          war.result === 'Win'
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-red-500/20 text-red-400'
                         }`}
                       >
                         {war.result}
