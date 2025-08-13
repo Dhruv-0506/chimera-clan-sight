@@ -3,8 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Search, Filter, ShieldAlert } from 'lucide-react';
 
 /* ---------- helpers ---------- */
-const formatDate = (endTime?: string) =>
-  endTime ? new Date(endTime).toISOString().split('T')[0] : 'N/A';
+const formatDate = (endTimeString?: string | number) => {
+  if (!endTimeString) return 'N/A';
+  const ts = typeof endTimeString === 'string' ? endTimeString.replace(/"/g, '') : String(endTimeString);
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? 'N/A' : d.toISOString().split('T')[0];
 
 const processWarList = (wars: any[]) =>
   wars.map((war, idx) => ({
