@@ -1,67 +1,82 @@
-// src/pages/PlayerRoster.jsx
-import React, { useEffect, useState } from 'react';
-import { Users, ShieldAlert } from 'lucide-react';
+// src/pages/PlayerRoster.tsx
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { PlayerCard } from '@/components/PlayerCard';
+import { PlayerDetailsModal } from '@/components/PlayerDetailsModal';
 
 const BACKEND_URL = 'https://chimera-clan-sight.onrender.com';
 
+const fetchRoster = async () => {
+  if (!BACKEND_URL) throw new Error('Backend URL is not configured.');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 28000);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/player-roster`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`The backend server responded with status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    return result.data;
+  } catch (err: any) {
+    if (err && (err.name === 'AbortError' || err.code === 'ABORT_ERR')) {
+      throw new Error('Request to the backend timed out. Please try again.');
+    }
+    throw err;
+  }
+};
+
 export default function PlayerRoster() {
-  const [roster, setRoster] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
 
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/api/roster`)
-      .then(r => r.json())
-      .then(json => {
-        if (json.error) throw new Error(json.error);
-        setRoster(json.data ?? []);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  if (isLoading) return <div className="min-h-screen pt-24 px-6 flex items-center justify-center"><h1 className="text-2xl font-bold">Loading Roster...</h1></div>;
-  if (error) return <div className="min-h-screen pt-24 px-6 flex items-center justify-center"><ShieldAlert className="mx-auto mb-4 text-primary-glow" size={48}/><h1 className="text-2xl font-bold">Roster Unavailable</h1><p className="text-muted-foreground">{error}</p></div>;
+  const { data: players, isLoading, error } = useQuery({
+    queryKey: ['playerRoster'],
+    queryFn: fetchRoster,
+    retry: false,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false
+  });
 
   return (
     <div className="min-h-screen pt-24 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Clan Roster</h1>
-          <p className="text-muted-foreground">Full member list & basic stats</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Player Roster</h1>
+          <p className="text-muted-foreground">Click on any player to view detailed performance analytics</p>
         </div>
 
-        <div className="glass-panel p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-glass-border">
-                  <th className="text-left py-3 px-4 text-primary-glow">Name</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">Role</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">TH</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">Trophies</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">Donated</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">Received</th>
-                  <th className="text-left py-3 px-4 text-primary-glow">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roster.map((m) => (
-                  <tr key={m.tag} className="border-b border-glass-border hover:bg-glass-hover">
-                    <td className="py-3 px-4 font-medium">{m.name}</td>
-                    <td className="py-3 px-4">{m.role}</td>
-                    <td className="py-3 px-4">{m.townHall}</td>
-                    <td className="py-3 px-4">{m.trophies.toLocaleString()}</td>
-                    <td className="py-3 px-4">{m.donations.toLocaleString()}</td>
-                    <td className="py-3 px-4">{m.received.toLocaleString()}</td>
-                    <td className="py-3 px-4 font-bold text-primary-glow">{m.score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {isLoading && <p className="text-center text-muted-foreground">Calculating Historical Scores...</p>}
+
+        {error && <div className="glass-panel text-center text-red-400 p-6"><strong>Error:</strong> {(error as any).message}</div>}
+
+        {players && (
+          <div className="player-card-grid">
+            {players
+              .sort((a: any, b: any) => (b.averageWarScore ?? 0) - (a.averageWarScore ?? 0))
+              .map((player: any) => (
+                <PlayerCard
+                  key={player.tag}
+                  player={player}
+                  onClick={setSelectedPlayer}
+                />
+              ))}
           </div>
-        </div>
+        )}
       </div>
+
+      {selectedPlayer && (
+        <PlayerDetailsModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
     </div>
   );
 }
